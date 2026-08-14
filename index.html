@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shipt Analyzer">
+<title>Shipt Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,300;9..144,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --green:#1a5c35;--green-light:#e8f5ee;
+  --amber:#b45309;--amber-light:#fef3c7;
+  --red:#c0392b;--red-light:#fdecea;
+  --blue:#1d4ed8;--blue-light:#eff6ff;
+  --purple:#6d28d9;--purple-light:#ede9fe;
+  --teal:#0d7377;--teal-light:#e0f7f7;
+  --surface:#f5f3ef;--card:#fff;
+  --border:#e2dfd8;--text:#1c1917;--muted:#78716c;--muted2:#a8a29e;
+  --fh:'Fraunces',serif;--fm:'DM Mono',monospace;--r:12px;--rs:8px;
+}
+html,body{height:100%;font-family:var(--fm);background:var(--surface);color:var(--text);font-size:14px;}
+body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:0 auto;}
+.topbar{background:var(--green);position:sticky;top:0;z-index:100;padding:14px 16px 0;}
+.topbar-row{display:flex;justify-content:space-between;align-items:center;}
+.app-name{font-family:var(--fh);font-size:21px;color:#fff;font-weight:600;letter-spacing:-0.3px;}
+.app-sub{font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.cbadge{background:rgba(255,255,255,0.18);color:#fff;font-size:11px;padding:4px 10px;border-radius:20px;}
+.key-dot{width:9px;height:9px;border-radius:50%;background:#ef4444;cursor:pointer;flex-shrink:0;transition:background 0.3s;}
+.key-dot.ok{background:#5edb97;}
+.tabs{display:flex;margin-top:10px;border-bottom:1px solid rgba(255,255,255,0.15);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex:0 0 auto;padding:9px 12px;font-size:10px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.5);font-family:var(--fm);text-transform:uppercase;letter-spacing:0.6px;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;}
+.tab.on{color:#fff;border-bottom-color:#5edb97;}
+.main{flex:1;padding:16px 16px 100px;overflow-y:auto;}
+.sec{display:none;}.sec.on{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;}
+.card-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px;font-weight:500;display:flex;justify-content:space-between;align-items:center;}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.met{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:12px;}
+.met .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
+.met .val{font-size:21px;font-weight:500;line-height:1.1;}
+.met .val.g{color:var(--green);}
+.met .val.a{color:var(--amber);}
+.met .sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.btn{width:100%;padding:13px;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--fm);border:none;transition:all 0.15s;margin-top:6px;display:block;text-align:center;}
+.btn:active{transform:scale(0.98);}
+.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-outline-red{background:none;color:var(--red);border:1px solid var(--red);}
+.btn-sm{padding:6px 10px;font-size:11px;border-radius:6px;cursor:pointer;font-family:var(--fm);border:1px solid var(--border);background:var(--card);color:var(--text);white-space:nowrap;transition:all 0.15s;}
+.btn-sm.g{border-color:var(--green);color:var(--green);}
+.btn-sm.r{border-color:var(--red);color:var(--red);}
+.btn-sm.filled{background:var(--green);color:#fff;border-color:var(--green);}
+.btn-sm.teal{background:var(--teal);color:#fff;border-color:var(--teal);}
+.key-banner{background:var(--blue-light);border:1px solid #bfdbfe;border-radius:var(--r);padding:14px;margin-bottom:14px;}
+.key-banner-title{font-size:13px;font-weight:500;color:var(--blue);margin-bottom:4px;}
+.key-banner-sub{font-size:11px;color:#3b82f6;margin-bottom:10px;line-height:1.6;}
+.key-input-row{display:flex;gap:8px;}
+.key-input{flex:1;padding:10px 12px;font-size:12px;border:1px solid #bfdbfe;border-radius:var(--rs);background:#fff;color:var(--text);font-family:var(--fm);}
+.key-save-btn{padding:10px 14px;background:var(--blue);color:#fff;border:none;border-radius:var(--rs);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fm);white-space:nowrap;}
+.key-ok-banner{background:var(--green-light);border:1px solid #b7dfca;border-radius:var(--r);padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.key-ok-text{font-size:12px;color:var(--green);}
+.key-change-btn{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:var(--fm);text-decoration:underline;}
+.dz{border:2px dashed var(--border);border-radius:var(--r);padding:26px 16px;text-align:center;cursor:pointer;position:relative;transition:all 0.2s;}
+.dz.drag{border-color:var(--green);background:var(--green-light);}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+.dz-icon{font-size:30px;margin-bottom:8px;}
+.dz-title{font-size:15px;font-weight:500;}
+.dz-sub{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.6;}
+.proc-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.proc-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;}
+.proc-row.s-done{border-left:3px solid var(--green);}
+.proc-row.s-reading{border-left:3px solid var(--amber);}
+.proc-row.s-error{border-left:3px solid var(--red);}
+.proc-row.s-queued{border-left:3px solid var(--muted2);}
+.proc-thumb{width:34px;height:52px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--border);}
+.proc-info{flex:1;min-width:0;}
+.proc-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.proc-stat{font-size:11px;color:var(--muted);margin-top:2px;}
+.proc-stat.done{color:var(--green);}
+.proc-stat.reading{color:var(--amber);}
+.proc-stat.error{color:var(--red);}
+.prog-wrap{margin-top:10px;}
+.prog-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width 0.4s;}
+.prog-lbl{font-size:11px;color:var(--muted);margin-top:6px;text-align:center;}
+.sort-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.sort-btn{padding:5px 10px;font-size:10px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;transition:all 0.15s;}
+.sort-btn.on{background:var(--green);color:#fff;border-color:var(--green);}
+
+/* ORDER CARDS */
+.ocard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;overflow:hidden;}
+.ocard.take{border-left:4px solid var(--green);}
+.ocard.skip{border-left:4px solid var(--red);}
+.ocard.maybe{border-left:4px solid var(--amber);}
+.ocard.claimed-style{border-left:4px solid var(--green);background:#fafffe;}
+.ocard-head{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px 8px;}
+.ocard-pay{font-size:24px;font-weight:500;color:var(--green);}
+.ocard-store{font-size:12px;color:var(--muted);margin-top:2px;}
+.vp{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap;}
+.vp-take{background:var(--green-light);color:var(--green);}
+.vp-maybe{background:var(--amber-light);color:var(--amber);}
+.vp-skip{background:var(--red-light);color:var(--red);}
+.vp-claimed{background:var(--green);color:#fff;}
+.ocard-stats{display:grid;grid-template-columns:1fr 1fr;padding:0 14px 10px;}
+.ostat{padding:5px 0;border-bottom:1px solid var(--border);}
+.ostat:nth-last-child(-n+2){border:none;}
+.ostat-k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;}
+.ostat-v{font-size:14px;font-weight:500;margin-top:1px;}
+.ocard-reason{margin:0 14px 10px;background:var(--surface);border-radius:var(--rs);padding:10px;font-size:12px;line-height:1.7;}
+.tip-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;margin-top:4px;}
+.tip-badge.high{background:var(--purple-light);color:var(--purple);}
+.tip-badge.med{background:var(--amber-light);color:var(--amber);}
+.tip-badge.low{background:var(--red-light);color:var(--red);}
+.score-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface);}
+.score-lbl{font-size:11px;color:var(--muted);}
+.score-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.score-bar{height:100%;border-radius:3px;}
+.score-num{font-size:12px;font-weight:500;min-width:44px;text-align:right;}
+.ocard-actions{padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;}
+.ocard-img{width:100%;max-height:140px;object-fit:cover;border-top:1px solid var(--border);display:block;}
+
+/* BATCH SUGGESTION BANNER */
+.batch-banner{background:var(--teal-light);border:1px solid #99d6d8;border-radius:var(--r);margin-bottom:14px;padding:14px;position:relative;}
+.batch-banner-title{font-size:13px;font-weight:500;color:var(--teal);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.batch-banner-body{font-size:12px;color:#0d7377;line-height:1.7;margin-bottom:10px;}
+.batch-orders{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.batch-order-pill{background:#fff;border:1px solid #99d6d8;border-radius:var(--rs);padding:7px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;}
+.batch-order-name{font-weight:500;color:var(--teal);}
+.batch-order-detail{font-size:11px;color:var(--muted);}
+.batch-claim-btn{width:100%;padding:10px;background:var(--teal);color:#fff;border:none;border-radius:var(--rs);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--fm);}
+.batch-claim-btn:active{opacity:0.85;}
+.batch-score-boost{font-size:10px;color:var(--teal);margin-top:6px;text-align:center;}
+
+/* PENDING TIPS */
+.pt-item{border-bottom:1px solid var(--border);padding:14px 0;}
+.pt-item:last-child{border:none;}
+.pt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.pt-num{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pt-main{flex:1;margin-left:10px;}
+.pt-store{font-size:13px;font-weight:500;}
+.pt-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.pt-pay{font-size:15px;font-weight:500;color:var(--green);white-space:nowrap;}
+.pt-details{display:none;background:var(--surface);border-radius:var(--rs);padding:10px;margin:8px 0;font-size:12px;line-height:1.9;}
+.pt-details.open{display:block;}
+.pt-details-row{display:flex;justify-content:space-between;}
+.pt-details-key{color:var(--muted);}
+.pt-details-val{font-weight:500;}
+.pt-details img{width:100%;max-height:140px;object-fit:cover;border-radius:var(--rs);margin-top:8px;border:1px solid var(--border);}
+.pt-input-row{display:flex;gap:8px;align-items:center;}
+.pt-input{flex:1;padding:9px 12px;font-size:15px;border:1px solid var(--border);border-radius:var(--rs);background:var(--card);color:var(--text);font-family:var(--fm);}
+.pt-save-btn{padding:9px 14px;font-size:12px;background:var(--green);color:#fff;border:none;border-radius:var(--rs);cursor:pointer;font-family:var(--fm);font-weight:500;white-space:nowrap;}
+.pt-toggle{font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:var(--fm);text-decoration:underline;padding:4px 0;}
+
+/* CONFIRMED TIPS */
+.ct-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.ct-item:last-child{border:none;}
+.ct-left .store{font-size:13px;font-weight:500;}
+.ct-left .meta{font-size:11px;color:var(--muted);margin-top:1px;}
+.ct-right{text-align:right;}
+.ct-tip{font-size:14px;font-weight:500;color:var(--amber);}
+.ct-base{font-size:11px;color:var(--muted);}
+
+/* STATS */
+.period-tabs{display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.period-tabs::-webkit-scrollbar{display:none;}
+.period-btn{flex:0 0 auto;padding:6px 12px;font-size:11px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-family:var(--fm);color:var(--muted);white-space:nowrap;transition:all 0.15s;}
+.period-btn.on{background:var(--green);color:#fff;border-color:var(--green);}
+.region-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.region-row:last-child{border:none;}
+.region-name{font-size:13px;min-width:90px;}
+.region-bar-wrap{flex:1;margin:0 10px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.region-bar{height:100%;background:var(--green);border-radius:2px;}
+.region-stats{text-align:right;}
+.region-avg{font-size:13px;font-weight:500;color:var(--green);}
+.region-count{font-size:10px;color:var(--muted);}
+.cl-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.cl-item:last-child{border:none;}
+
+/* SETTINGS */
+.set-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
+.set-row:last-child{border:none;}
+.set-lbl{font-size:13px;}
+.set-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.set-input{width:80px;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:var(--fm);text-align:right;}
+
+/* TIP ROW */
+.tip-row{padding:10px 0;border-bottom:1px solid var(--border);}
+.tip-row:last-child{border:none;}
+.tip-row-info{margin-bottom:6px;}
+.tip-row-store{font-size:13px;font-weight:500;}
+.tip-row-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+.tip-input-wrap{display:flex;gap:6px;align-items:center;}
+.tip-input{width:68px;padding:7px 8px;font-size:13px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:var(--fm);text-align:right;}
+.tip-save-btn{padding:7px 10px;font-size:11px;background:var(--green);color:#fff;border:none;border-radius:var(--rs);cursor:pointer;font-family:var(--fm);}
+
+/* MISC */
+.empty{text-align:center;padding:36px 16px;color:var(--muted);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+.empty-ttl{font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px;}
+.empty-sub{font-size:12px;line-height:1.7;}
+.notif{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--green);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;transition:transform 0.3s;pointer-events:none;max-width:90%;text-align:center;}
+.notif.err{background:var(--red);}
+.notif.show{transform:translateX(-50%) translateY(0);}
+.debug-box{background:#1c1917;color:#5edb97;border-radius:var(--rs);padding:12px;font-size:11px;line-height:1.7;margin-top:10px;word-break:break-all;max-height:180px;overflow-y:auto;display:none;}
+.sum-banner{background:var(--green);border-radius:var(--r);padding:16px;margin-bottom:14px;color:#fff;}
+.sum-title{font-family:var(--fh);font-size:18px;font-weight:600;margin-bottom:10px;}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.sum-item .lbl{font-size:10px;opacity:0.6;text-transform:uppercase;letter-spacing:0.5px;}
+.sum-item .val{font-size:22px;font-weight:500;margin-top:2px;}
+.sum-note{margin-top:10px;font-size:12px;opacity:0.7;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div><div class="app-name">Shipt Analyzer</div><div class="app-sub">Lincoln, NE</div></div>
+    <div class="hdr-right">
+      <div class="cbadge" id="cbadge">0 claimed</div>
+      <div class="key-dot" id="keyDot" onclick="goTab('settings',document.querySelectorAll('.tab')[4])"></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" onclick="goTab('analyze',this)">Analyze</button>
+    <button class="tab" onclick="goTab('results',this)">Results</button>
+    <button class="tab" onclick="goTab('stats',this)">Stats</button>
+    <button class="tab" onclick="goTab('tips',this)">Pending Tips</button>
+    <button class="tab" onclick="goTab('settings',this)">Settings</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ANALYZE -->
+<div class="sec on" id="sec-analyze">
+  <div id="keyBannerWrap"></div>
+  <div class="card">
+    <div class="card-title">Drop order screenshots</div>
+    <div class="dz" id="dz">
+      <input type="file" id="fileInput" accept="image/*" multiple onchange="addFiles(this.files)">
+      <div class="dz-icon">📲</div>
+      <div class="dz-title">Select all order screenshots</div>
+      <div class="dz-sub">Select multiple at once from your camera roll.<br>AI reads pay, items, time and distance automatically.</div>
+    </div>
+  </div>
+  <div id="queueSection" style="display:none;">
+    <div class="card">
+      <div class="card-title" id="queueTitle">0 queued</div>
+      <div class="proc-list" id="procList"></div>
+      <div class="prog-wrap" id="progWrap" style="display:none;">
+        <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+        <div class="prog-lbl" id="progLbl">Reading...</div>
+      </div>
+    </div>
+    <button class="btn btn-green" id="analyzeBtn" onclick="analyzeAll()">Read all screenshots</button>
+    <button class="btn btn-outline-red" onclick="clearQueue()" style="margin-top:8px;">Clear queue</button>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="sec" id="sec-results">
+  <div id="resultsEmpty" class="empty">
+    <div class="empty-icon">🔍</div><div class="empty-ttl">No results yet</div>
+    <div class="empty-sub">Upload screenshots on the Analyze tab.</div>
+  </div>
+  <div id="resultsContent" style="display:none;">
+    <div id="sumBanner"></div>
+    <div id="batchSuggestions"></div>
+    <div class="sort-row">
+      <button class="sort-btn on" onclick="sortBy('score',this)">Best first</button>
+      <button class="sort-btn" onclick="sortBy('pay',this)">Pay</button>
+      <button class="sort-btn" onclick="sortBy('tip_intel',this)">Tip potential</button>
+      <button class="sort-btn" onclick="sortBy('time',this)">Fastest</button>
+      <button class="sort-btn" onclick="sortBy('ppm',this)">$/min</button>
+    </div>
+    <div id="orderCards"></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="sec" id="sec-stats">
+  <div class="period-tabs">
+    <button class="period-btn on" onclick="setPeriod('today',this)">Today</button>
+    <button class="period-btn" onclick="setPeriod('week',this)">This week</button>
+    <button class="period-btn" onclick="setPeriod('month',this)">This month</button>
+    <button class="period-btn" onclick="setPeriod('last50',this)">Last 50</button>
+    <button class="period-btn" onclick="setPeriod('all',this)">All time</button>
+  </div>
+  <div class="mgrid">
+    <div class="met"><div class="lbl">Total earned</div><div class="val g" id="kpiEarned">$0</div><div class="sub" id="kpiEarnedSub">incl. tips</div></div>
+    <div class="met"><div class="lbl">$/hour</div><div class="val g" id="kpiRate">--</div><div class="sub" id="kpiRateSub">est. time</div></div>
+  </div>
+  <div class="mgrid">
+    <div class="met"><div class="lbl">Orders</div><div class="val" id="kpiOrders">0</div><div class="sub" id="kpiOrdersSub">claimed</div></div>
+    <div class="met"><div class="lbl">Avg/order</div><div class="val" id="kpiAvg">$0</div><div class="sub">base + tip</div></div>
+  </div>
+  <div class="mgrid">
+    <div class="met"><div class="lbl">Total tips</div><div class="val a" id="kpiTips">$0</div><div class="sub" id="kpiTipsSub">confirmed</div></div>
+    <div class="met"><div class="lbl">Tip rate</div><div class="val" id="kpiTipRate">0%</div><div class="sub">of total pay</div></div>
+  </div>
+  <div class="mgrid">
+    <div class="met"><div class="lbl">Miles driven</div><div class="val" id="kpiMiles">0</div><div class="sub">logged</div></div>
+    <div class="met"><div class="lbl">Tax deduction</div><div class="val" id="kpiDeduct">$0</div><div class="sub">at $0.70/mi</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Best tipping regions in Lincoln</div>
+    <div id="regionStats"><div style="font-size:12px;color:var(--muted);">Claim orders to build region data.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Best tipping stores</div>
+    <div id="storeStats"><div style="font-size:12px;color:var(--muted);">Claim orders from multiple stores to compare.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Claimed orders
+      <button class="btn-sm r" onclick="if(confirm('Remove all claimed orders?')){claimedOrders=[];saveAll();renderBadge();renderStats();renderPendingTips();notify('Cleared');}">Clear all</button>
+    </div>
+    <div id="claimedList"><div style="font-size:12px;color:var(--muted);">No claimed orders yet.</div></div>
+  </div>
+</div>
+
+<!-- PENDING TIPS -->
+<div class="sec" id="sec-tips">
+  <div class="card" style="background:var(--purple-light);border-color:#c4b5fd;">
+    <div style="font-size:12px;color:var(--purple);line-height:1.8;">
+      Tips arrive up to 24hrs after delivery. Enter each tip here to keep your $/hr stats accurate and train your tip intelligence. Tap <strong>More details</strong> on any order to see the full breakdown and original screenshot.
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Awaiting tip confirmation</div>
+    <div id="pendingTipsList"><div style="font-size:12px;color:var(--muted);">No pending tips right now.</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Confirmed tips</div>
+    <div id="confirmedTipsList"><div style="font-size:12px;color:var(--muted);">No confirmed tips yet.</div></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="sec" id="sec-settings">
+  <div class="card">
+    <div class="card-title">Anthropic API key</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;">Get a free key at <strong style="color:var(--text);">console.anthropic.com</strong> and add $5 in credits.</div>
+    <div class="key-input-row">
+      <input class="key-input" type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+      <button class="key-save-btn" onclick="saveApiKey()">Save</button>
+    </div>
+    <div id="keyStatusMsg" style="font-size:11px;margin-top:8px;color:var(--muted);"></div>
+    <button class="btn" onclick="testKey()" style="margin-top:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:12px;padding:10px;">Test connection</button>
+    <div class="debug-box" id="debugBox"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Scoring thresholds</div>
+    <div class="set-row"><div><div class="set-lbl">Minimum pay</div><div class="set-sub">Below this = Skip</div></div><input class="set-input" type="number" id="sPay" value="10" step="0.5" oninput="saveSettings()"></div>
+    <div class="set-row"><div><div class="set-lbl">Max items</div><div class="set-sub">High counts cut $/hr</div></div><input class="set-input" type="number" id="sItems" value="50" oninput="saveSettings()"></div>
+    <div class="set-row"><div><div class="set-lbl">Max distance (mi)</div><div class="set-sub">Long drives cut profit</div></div><input class="set-input" type="number" id="sMiles" value="8" oninput="saveSettings()"></div>
+    <div class="set-row"><div><div class="set-lbl">Target $/hour</div><div class="set-sub">Used to score efficiency</div></div><input class="set-input" type="number" id="sRate" value="18" oninput="saveSettings()"></div>
+    <div class="set-row"><div><div class="set-lbl">Tip intel weight (0-5)</div><div class="set-sub">How much tip history affects score</div></div><input class="set-input" type="number" id="sTipWeight" value="2" step="0.5" min="0" max="5" oninput="saveSettings()"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Batch detection</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8;">When multiple orders have delivery addresses close together on Lincoln's street grid, the app automatically suggests taking them as a batch. Batch orders get a score boost since you earn more per drive. The closer the addresses, the higher the boost (up to +20pts each).</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Scoring breakdown</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.9;">Pay/min vs target rate (up to 45pts)<br>Pay vs minimum threshold (20pts)<br>Distance and item penalties (up to -15pts each)<br>Tip intelligence bonus (up to 15pts)<br>Batch bonus when paired with nearby order (up to +20pts)<br><br><span style="color:var(--green);font-weight:500;">Take</span> = 65+&nbsp;&nbsp;<span style="color:var(--amber);font-weight:500;">Maybe</span> = 40-64&nbsp;&nbsp;<span style="color:var(--red);font-weight:500;">Skip</span> = below 40</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Google Sheets sync</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:12px;">
+      Syncs all your claimed orders to a Google Sheet automatically. Every time you claim an order or confirm a tip, it pushes to your sheet. Follow the setup guide below to get your script URL.
+    </div>
+    <div class="key-input-row" style="margin-bottom:8px;">
+      <input class="key-input" type="text" id="sheetsUrl" placeholder="https://script.google.com/macros/s/..." autocomplete="off" spellcheck="false" style="border-color:var(--border);">
+      <button class="key-save-btn" onclick="saveSheetUrl()" style="background:var(--green);">Save</button>
+    </div>
+    <div id="sheetUrlStatus" style="font-size:11px;color:var(--muted);margin-bottom:10px;"></div>
+    <button class="btn btn-green" onclick="syncToSheets(false)" style="margin-top:0;">Sync all orders to sheet →</button>
+    <div id="syncStatus" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;"></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:8px;">Setup guide (5 minutes, free):</div>
+      <div style="font-size:11px;color:var(--muted);line-height:2;">
+        1. Go to <strong style="color:var(--text);">sheets.google.com</strong> and create a new blank sheet<br>
+        2. Click <strong style="color:var(--text);">Extensions → Apps Script</strong><br>
+        3. Delete all existing code in the editor<br>
+        4. Paste the script from the <strong style="color:var(--text);">ShiптScript.gs</strong> file (download below)<br>
+        5. Click <strong style="color:var(--text);">Deploy → New deployment</strong><br>
+        6. Type: <strong style="color:var(--text);">Web app</strong><br>
+        7. Execute as: <strong style="color:var(--text);">Me</strong><br>
+        8. Who has access: <strong style="color:var(--text);">Anyone</strong><br>
+        9. Click <strong style="color:var(--text);">Deploy</strong> → authorize → copy the Web App URL<br>
+        10. Paste the URL above and tap Save
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Storage</div>
+    <div id="storageInfo" style="font-size:12px;color:var(--muted);margin-bottom:10px;">Calculating...</div>
+    <button class="btn" onclick="if(confirm('Clear ALL claimed orders, tips and history? This cannot be undone.')){claimedOrders=[];saveAll();renderBadge();renderStats();renderPendingTips();updateStorageInfo();notify('All data cleared');}" style="background:var(--red-light);color:var(--red);border:1px solid #fca5a5;font-size:12px;padding:10px;margin-top:0;">Clear all order data</button>
+  </div>
+</div>
+
+</div>
+<div class="notif" id="notif"></div>
+
+<script>
+// ════════ STATE ════════
+var apiKey = localStorage.getItem('soa_key') || '';
+var sheetsUrl = localStorage.getItem('soa_sheets_url') || '';
+var settings = JSON.parse(localStorage.getItem('soa_settings') || '{"minPay":10,"maxItems":50,"maxMiles":8,"targetRate":18,"tipWeight":2}');
+var claimedOrders = [];
+var currentResults = [];
+var currentSort = 'score';
+var currentPeriod = 'today';
+var queue = [];
+var analyzing = false;
+
+try { claimedOrders = JSON.parse(localStorage.getItem('soa_claimed') || '[]'); } catch(e) { claimedOrders = []; }
+function saveAll() {
+  var toSave = claimedOrders.map(function(o) { var c = Object.assign({}, o); delete c.imgB64; delete c.imgMime; return c; });
+  try {
+    localStorage.setItem('soa_claimed', JSON.stringify(toSave));
+  } catch(e) {
+    notify('Storage full — trimming oldest orders', true);
+    var trimmed = toSave.slice(0, Math.max(1, Math.floor(toSave.length * 0.8)));
+    try { localStorage.setItem('soa_claimed', JSON.stringify(trimmed)); claimedOrders = claimedOrders.slice(0, trimmed.length); }
+    catch(e2) { notify('Storage full — clear old orders in Stats tab', true); }
+  }
+}
+
+applySettings(); renderKeyStatus(); renderKeyBanner(); renderBadge(); setTimeout(function(){ updateStorageInfo(); renderSheetStatus(); }, 100);
+
+// ════════ NOTIFY ════════
+function notify(msg, isErr) {
+  var n = document.getElementById('notif');
+  n.textContent = msg;
+  n.className = 'notif' + (isErr ? ' err' : '') + ' show';
+  setTimeout(function(){ n.className = 'notif'; }, 3200);
+}
+
+// ════════ NAV ════════
+function goTab(id, btn) {
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('sec-' + id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  if (id === 'results') renderResults();
+  if (id === 'stats') renderStats();
+  if (id === 'tips') renderPendingTips();
+  if (id === 'settings') { updateStorageInfo(); renderSheetStatus(); }
+}
+function renderBadge() { document.getElementById('cbadge').textContent = claimedOrders.length + ' claimed'; }
+function updateStorageInfo() {
+  var el = document.getElementById('storageInfo'); if (!el) return;
+  var total = 0; try { for (var k in localStorage) { if (localStorage.hasOwnProperty(k)) total += ((localStorage[k]||'').length * 2); } } catch(e) {}
+  var kb = Math.round(total / 1024);
+  var pct = Math.min(100, Math.round(kb / 5120 * 100));
+  var color = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--amber)' : 'var(--green)';
+  el.innerHTML = 'Storage used: <strong style="color:'+color+';">'+kb+'KB / 5120KB ('+pct+'%)</strong><br><span style="color:var(--muted);">'+claimedOrders.length+' orders saved · screenshots not stored (session only)</span>';
+}
+
+// ════════ GOOGLE SHEETS SYNC ════════
+function saveSheetUrl() {
+  var inp = document.getElementById('sheetsUrl');
+  if (!inp || !inp.value.trim()) { notify('Paste your script URL first', true); return; }
+  sheetsUrl = inp.value.trim();
+  localStorage.setItem('soa_sheets_url', sheetsUrl);
+  renderSheetStatus();
+  notify('Sheet URL saved!');
+}
+
+function renderSheetStatus() {
+  var el = document.getElementById('sheetUrlStatus');
+  var inp = document.getElementById('sheetsUrl');
+  if (!el) return;
+  if (sheetsUrl) {
+    el.textContent = 'Connected: ' + sheetsUrl.slice(0, 50) + '...';
+    el.style.color = 'var(--green)';
+    if (inp) inp.value = sheetsUrl;
+  } else {
+    el.textContent = 'No sheet connected yet';
+    el.style.color = 'var(--muted)';
+  }
+}
+
+async function syncToSheets(silent) {
+  if (!sheetsUrl) { notify('Add your Google Script URL in Settings first', true); return; }
+  if (!claimedOrders.length) { if (!silent) notify('No orders to sync yet', true); return; }
+  var statusEl = document.getElementById('syncStatus');
+  if (statusEl) statusEl.textContent = 'Syncing ' + claimedOrders.length + ' orders...';
+  if (!silent) notify('Syncing to Google Sheets...');
+
+  // Build flat arrays — one per order
+  var rows = claimedOrders.map(function(o) {
+    var tip = o.confirmedTip != null ? o.confirmedTip : null;
+    var total = (o.basePay||0) + (tip||0) + (o.bonus||0);
+    return [
+      o.id || '',
+      o.ts ? new Date(o.ts).toLocaleString() : '',
+      o.store || '',
+      o.address || '',
+      o.region || '',
+      (o.basePay||0).toFixed(2),
+      (o.bonus||0).toFixed(2),
+      tip != null ? tip.toFixed(2) : 'pending',
+      tip != null ? total.toFixed(2) : 'pending',
+      o.items || 0,
+      o.estMinutes || 0,
+      o.distance || 0,
+      o.score || 0,
+      (o.batchGroup || o.batchScreenshot) ? 'yes' : 'no'
+    ];
+  });
+
+  // Split into chunks of 10 to stay well under URL length limits
+  var CHUNK = 10;
+  var chunks = [];
+  for (var i = 0; i < rows.length; i += CHUNK) chunks.push(rows.slice(i, i + CHUNK));
+  var total_chunks = chunks.length;
+
+  try {
+    for (var ci = 0; ci < chunks.length; ci++) {
+      var payload = JSON.stringify({ action: 'syncAll', rows: chunks[ci], chunk: ci, total: total_chunks });
+      // Base64 encode to safely pass JSON through a URL parameter
+      var encoded = btoa(unescape(encodeURIComponent(payload)));
+      var url = sheetsUrl + '?d=' + encoded;
+      // Use no-cors GET — Apps Script doGet handles this
+      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      // Small delay between chunks
+      if (ci < chunks.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
+    }
+    if (statusEl) statusEl.textContent = 'Last synced: ' + new Date().toLocaleTimeString() + ' · ' + rows.length + ' orders';
+    if (!silent) notify('Synced ' + rows.length + ' orders to Google Sheets!');
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Sync failed: ' + e.message;
+    if (!silent) notify('Sync failed: ' + e.message, true);
+  }
+}
+
+
+// Auto-sync when a tip is confirmed or order is claimed
+function saveAllAndSync() {
+  saveAll();
+  if (sheetsUrl) syncToSheets(true);
+}
+
+// ════════ REGION ════════
+function extractRegion(address) {
+  if (!address) return 'Unknown';
+  var a = address.toLowerCase();
+  if (a.match(/downtown|o st|q st|p st|10th|11th|12th|13th|14th|15th|16th/)) return 'Downtown';
+  if (a.match(/south|s 27th|s 40th|s 48th|s 56th|s 70th|s 84th|pine lake|yankee hill/)) return 'South Lincoln';
+  if (a.match(/north|n 27th|n 48th|n 56th|havelock|military|cornhusker/)) return 'North Lincoln';
+  if (a.match(/east|n 84th|n 91st|gateway|84th|91st/)) return 'East Lincoln';
+  if (a.match(/west|pioneers|coddington|w o st|w a st|ridge/)) return 'West Lincoln';
+  if (a.match(/university|unl|vine|holdrege|salt creek/)) return 'University Area';
+  return 'Other';
+}
+
+// ════════ ADDRESS PARSING FOR BATCH DETECTION ════════
+// Lincoln is a near-perfect grid: N/S streets are numbered, E/W streets are lettered or named
+// We parse street numbers to estimate block distances
+function parseLincolnAddress(address) {
+  if (!address) return null;
+  var a = address.toLowerCase();
+  var result = { northSouth: null, eastWest: null };
+
+  // N/S numbered streets: "N 27th", "S 56th", "27th St"
+  var nsMatch = a.match(/([ns]\.?\s*)?(\d+)(?:th|st|nd|rd)\s*(st|street|ave|avenue|blvd)?/);
+  if (nsMatch) result.northSouth = parseInt(nsMatch[2]);
+
+  // E/W lettered streets: "O St", "A St", "Vine St", "Pine Lake"
+  var ewLetterMatch = a.match(/\b([a-w])\s*(?:st|street)\b/);
+  if (ewLetterMatch) result.eastWest = ewLetterMatch[1].charCodeAt(0) - 'a'.charCodeAt(0);
+
+  // Named cross streets mapped to approximate block numbers from downtown
+  var namedStreets = {
+    'vine':10,'holdrege':14,'leighton':17,'adams':21,'calvert':25,
+    'cornhusker':28,'military':34,'fletcher':38,'superior':45,
+    'pioneers':3,'south':6,'pine lake':55,'yankee hill':62,
+    'old cheney':48,'highway 2':40,'nebraska':5,'capitol':2,'k st':10,'p st':15,'q st':16
+  };
+  Object.keys(namedStreets).forEach(function(name) {
+    if (a.includes(name)) result.eastWest = namedStreets[name];
+  });
+
+  return result;
+}
+
+function estimateBlockDistance(addr1, addr2) {
+  // Returns estimated distance in blocks (1 block ≈ 0.1 mi in Lincoln)
+  var p1 = parseLincolnAddress(addr1);
+  var p2 = parseLincolnAddress(addr2);
+  if (!p1 || !p2) return 999;
+
+  var nsDiff = 999, ewDiff = 999;
+  if (p1.northSouth !== null && p2.northSouth !== null) nsDiff = Math.abs(p1.northSouth - p2.northSouth);
+  if (p1.eastWest !== null && p2.eastWest !== null) ewDiff = Math.abs(p1.eastWest - p2.eastWest);
+
+  // If we only have one axis for both, use that
+  if (nsDiff === 999 && ewDiff !== 999) return ewDiff;
+  if (ewDiff === 999 && nsDiff !== 999) return nsDiff;
+  if (nsDiff === 999 && ewDiff === 999) return 999;
+
+  // Manhattan distance in blocks
+  return nsDiff + ewDiff;
+}
+
+function blocksToMiles(blocks) { return (blocks * 0.1).toFixed(1); }
+function blocksToMinutes(blocks) {
+  // ~2 min per mile driving in suburbs, blocks = 0.1mi each
+  return Math.round(blocks * 0.1 * 2);
+}
+
+// ════════ BATCH DETECTION ════════
+function findBatches(orders) {
+  var CLOSE_BLOCKS = 20; // ~2 miles = "close" for a batch
+  var batches = [];
+  var used = new Set();
+
+  for (var i = 0; i < orders.length; i++) {
+    if (used.has(i)) continue;
+    var group = [i];
+    for (var j = i + 1; j < orders.length; j++) {
+      if (used.has(j)) continue;
+      if (!orders[i].address || !orders[j].address) continue;
+      var blocks = estimateBlockDistance(orders[i].address, orders[j].address);
+      if (blocks <= CLOSE_BLOCKS) {
+        group.push(j);
+      }
+    }
+    if (group.length >= 2) {
+      // Only take pairs/triples (don't over-group)
+      var pair = group.slice(0, 3);
+      pair.forEach(function(idx){ used.add(idx); });
+      batches.push(pair);
+    }
+  }
+  return batches;
+}
+
+function batchScoreBoost(blocks) {
+  // Closer = bigger boost. Under 5 blocks = +20, under 10 = +15, under 20 = +10
+  if (blocks <= 5)  return 20;
+  if (blocks <= 10) return 15;
+  if (blocks <= 20) return 10;
+  return 0;
+}
+
+// ════════ API KEY ════════
+function saveApiKey() {
+  var v = document.getElementById('apiKeyInput').value.trim();
+  if (!v) { notify('Paste your API key first', true); return; }
+  apiKey = v; localStorage.setItem('soa_key', apiKey);
+  renderKeyStatus(); renderKeyBanner(); notify('API key saved!');
+}
+function renderKeyStatus() {
+  var msg = document.getElementById('keyStatusMsg'), dot = document.getElementById('keyDot'), inp = document.getElementById('apiKeyInput');
+  if (!msg) return;
+  if (apiKey) { msg.textContent = 'Key saved: ' + apiKey.slice(0,20) + '...'; msg.style.color = 'var(--green)'; dot.className = 'key-dot ok'; inp.value = apiKey; }
+  else { msg.textContent = 'No key saved yet'; msg.style.color = 'var(--muted)'; dot.className = 'key-dot'; }
+}
+function renderKeyBanner() {
+  var wrap = document.getElementById('keyBannerWrap'); if (!wrap) return;
+  if (apiKey) { wrap.innerHTML = '<div class="key-ok-banner"><div class="key-ok-text">API key active</div><button class="key-change-btn" onclick="goTab(\'settings\',document.querySelectorAll(\'.tab\')[4])">Change</button></div>'; }
+  else { wrap.innerHTML = '<div class="key-banner"><div class="key-banner-title">API key needed to read screenshots</div><div class="key-banner-sub">Free key at console.anthropic.com</div><div class="key-input-row"><input class="key-input" type="password" id="quickKey" placeholder="sk-ant-api03-..." autocomplete="off"><button class="key-save-btn" onclick="quickSaveKey()">Save</button></div></div>'; }
+}
+function quickSaveKey() {
+  var el = document.getElementById('quickKey'); if (!el) return;
+  var v = el.value.trim(); if (!v) { notify('Paste your key first', true); return; }
+  apiKey = v; localStorage.setItem('soa_key', apiKey); renderKeyBanner(); renderKeyStatus(); notify('API key saved!');
+}
+async function testKey() {
+  if (!apiKey) { notify('Save your API key first', true); return; }
+  var db = document.getElementById('debugBox'); db.style.display = 'block'; db.textContent = 'Connecting...'; db.style.color = '#5edb97';
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}, body: JSON.stringify({model:'claude-haiku-4-5',max_tokens:10,messages:[{role:'user',content:'Hi'}]}) });
+    var text = await resp.text(); db.textContent = 'HTTP ' + resp.status + '\n\n' + text.slice(0,400);
+    if (resp.ok) notify('Connection works!'); else { notify('API error - see debug box', true); db.style.color = '#f87171'; }
+  } catch(e) { db.textContent = 'Error: ' + e.message; db.style.color = '#f87171'; notify('Failed: ' + e.message, true); }
+}
+
+// ════════ SETTINGS ════════
+function applySettings() {
+  document.getElementById('sPay').value = settings.minPay;
+  document.getElementById('sItems').value = settings.maxItems;
+  document.getElementById('sMiles').value = settings.maxMiles;
+  document.getElementById('sRate').value = settings.targetRate;
+  document.getElementById('sTipWeight').value = settings.tipWeight != null ? settings.tipWeight : 2;
+}
+function saveSettings() {
+  settings = { minPay:parseFloat(document.getElementById('sPay').value)||10, maxItems:parseInt(document.getElementById('sItems').value)||50, maxMiles:parseFloat(document.getElementById('sMiles').value)||8, targetRate:parseFloat(document.getElementById('sRate').value)||18, tipWeight:parseFloat(document.getElementById('sTipWeight').value)||2 };
+  localStorage.setItem('soa_settings', JSON.stringify(settings));
+  if (currentResults.length) renderResults();
+}
+
+// ════════ TIP INTELLIGENCE ════════
+function buildTipIntelligence() {
+  var storeMap = {}, regionMap = {};
+  claimedOrders.forEach(function(o) {
+    var tip = o.confirmedTip != null ? o.confirmedTip : (o.tip || 0);
+    var total = (o.basePay||0) + tip + (o.bonus||0);
+    if (o.store) { if (!storeMap[o.store]) storeMap[o.store] = {tips:[],count:0}; storeMap[o.store].tips.push(tip); storeMap[o.store].count++; }
+    var region = o.region || extractRegion(o.address||'');
+    if (!regionMap[region]) regionMap[region] = {tips:[],totals:[]};
+    regionMap[region].tips.push(tip); regionMap[region].totals.push(total);
+  });
+  var storeIntel = {}, regionIntel = {};
+  Object.keys(storeMap).forEach(function(s) { var d=storeMap[s]; storeIntel[s] = {avgTip:d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length, count:d.count}; });
+  Object.keys(regionMap).forEach(function(r) { var d=regionMap[r]; var avgTip=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length; var avgTotal=d.totals.reduce(function(a,b){return a+b;},0)/d.totals.length; regionIntel[r]={avgTip:avgTip,avgRate:avgTotal>0?avgTip/avgTotal:0,count:d.tips.length}; });
+  return {storeIntel:storeIntel,regionIntel:regionIntel};
+}
+function tipIntelBonus(o, intel) {
+  var weight = settings.tipWeight != null ? settings.tipWeight : 2; if (weight===0) return 0;
+  var bonus = 0, store = o.store||'', region = o.region||extractRegion(o.address||'');
+  if (intel.storeIntel[store] && intel.storeIntel[store].count >= 2) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
+  if (intel.regionIntel[region] && intel.regionIntel[region].count >= 2) bonus += intel.regionIntel[region].avgRate*10*weight;
+  return Math.min(15, Math.round(bonus));
+}
+function tipPotentialLabel(o, intel) {
+  var store=o.store||'', region=o.region||extractRegion(o.address||'');
+  var si=intel.storeIntel[store], ri=intel.regionIntel[region];
+  var src=(si&&si.count>=2)?si:((ri&&ri.count>=2)?ri:null);
+  if (!src) return null;
+  var avg=src.avgTip||0;
+  if (avg>=5) return {label:'High tip area',cls:'high',avg:avg};
+  if (avg>=2) return {label:'Decent tips',cls:'med',avg:avg};
+  return {label:'Low tip area',cls:'low',avg:avg};
+}
+
+// ════════ FILE HANDLING ════════
+var dz = document.getElementById('dz');
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag'); addFiles(e.dataTransfer.files); });
+function addFiles(files) {
+  if (!files||!files.length) return;
+  Array.from(files).forEach(function(f){ queue.push({id:'q'+Date.now()+Math.random().toString(36).slice(2,5),file:f,url:URL.createObjectURL(f),b64:null,mime:f.type||'image/jpeg',status:'queued',data:null}); });
+  renderQueue(); notify(files.length+' screenshot'+(files.length>1?'s':'')+' added');
+}
+function renderQueue() {
+  var qs=document.getElementById('queueSection'); if (!queue.length){qs.style.display='none';return;} qs.style.display='block';
+  var done=queue.filter(function(q){return q.status==='done';}).length;
+  document.getElementById('queueTitle').textContent=queue.length+' screenshot'+(queue.length>1?'s':'')+(done?' - '+done+' read':'');
+  document.getElementById('procList').innerHTML=queue.map(function(q,i){
+    return '<div class="proc-row s-'+q.status+'"><img class="proc-thumb" src="'+q.url+'" alt=""><div class="proc-info"><div class="proc-name">Screenshot '+(i+1)+(q.data&&q.data.store?' - '+q.data.store:'')+'</div><div class="proc-stat '+(q.status==='done'?'done':q.status==='reading'?'reading':q.status==='error'?'error':'')+'">'+( q.status==='done'?'Read - $'+(q.data?q.data.pay.toFixed(2):'?'):q.status==='reading'?'Reading with AI...':q.status==='error'?'Failed - check Settings > Test connection':'Queued')+'</div></div>'+(!analyzing?'<button class="btn-sm r" onclick="removeQ(\''+q.id+'\')">X</button>':'')+'</div>';
+  }).join('');
+  var btn=document.getElementById('analyzeBtn'); btn.disabled=analyzing;
+  btn.textContent=analyzing?'Reading screenshots...':(done===queue.length&&done>0?'View results':'Read all screenshots');
+}
+function removeQ(id){queue=queue.filter(function(q){return q.id!==id;});renderQueue();}
+function clearQueue(){queue=[];document.getElementById('queueSection').style.display='none';}
+function fileToB64(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});}
+
+// ════════ ANALYZE ════════
+async function analyzeAll() {
+  if (!apiKey){notify('Add your API key first',true);return;}
+  var alreadyDone=queue.filter(function(q){return q.status==='done';}).length;
+  if (alreadyDone===queue.length&&alreadyDone>0){buildResults();return;}
+  analyzing=true; document.getElementById('progWrap').style.display='block'; renderQueue();
+  var toRead=queue.filter(function(q){return q.status!=='done';}), completed=0;
+  var intel=buildTipIntelligence();
+  for (var i=0;i<toRead.length;i++) {
+    var item=toRead[i]; item.status='reading'; renderQueue();
+    try {
+      if (!item.b64) item.b64=await fileToB64(item.file);
+      var data=await readOneScreenshot(item.b64,item.mime);
+
+      // Batch screenshot detected — split into 2 separate queue items
+      if (data._isBatch && data._orders) {
+        data._orders.forEach(function(subOrder,si){
+          subOrder.imgB64=item.b64; subOrder.imgMime=item.mime;
+          subOrder.region=extractRegion(subOrder.address||'');
+          subOrder.tipBonus=tipIntelBonus(subOrder,intel);
+          subOrder.batchBonus=0;
+          subOrder.score=scoreOrder(subOrder,subOrder.tipBonus,0);
+          subOrder.ts=Date.now()+completed+(si*0.1); subOrder.claimed=false;
+          // Push as extra items into queue with done status
+          queue.push({id:'q'+Date.now()+'b'+si,file:item.file,url:item.url,b64:item.b64,mime:item.mime,status:'done',data:subOrder});
+        });
+        item.status='done'; item.data={pay:0,store:'(split into '+data._orders.length+' batch orders)',address:'',items:0,estMinutes:0,distance:0,basePay:0,tip:0,bonus:0,_placeholder:true};
+        notify('Batch screenshot detected — split into '+data._orders.length+' separate orders!');
+      } else {
+        data.imgB64=item.b64; data.imgMime=item.mime;
+        data.region=extractRegion(data.address||'');
+        data.tipBonus=tipIntelBonus(data,intel);
+        data.batchBonus=0;
+        data.score=scoreOrder(data,data.tipBonus,0);
+        data.ts=Date.now()+completed; data.claimed=false;
+        item.data=data; item.status='done';
+      }
+    } catch(e){ item.status='error'; console.error(e.message); }
+    completed++;
+    document.getElementById('progFill').style.width=Math.round((completed/toRead.length)*100)+'%';
+    document.getElementById('progLbl').textContent='Read '+completed+' of '+toRead.length;
+    renderQueue();
+  }
+  analyzing=false; renderQueue();
+  if (queue.some(function(q){return q.status==='done';})) buildResults();
+  else notify('All failed - go to Settings and test connection',true);
+}
+
+async function readOneScreenshot(b64,mime) {
+  // Use a larger prompt that detects single orders AND batch screenshots with 2 orders
+  var prompt = 'This is a Shipt shopper order offer screenshot. It may show ONE order or a BATCH of 2+ orders (look for words like "Batch", "2 orders", "2 stops", multiple addresses, or multiple item counts listed).\n\nIf it is a SINGLE order, return ONLY this JSON:\n{"type":"single","pay":0,"basePay":0,"tip":0,"bonus":0,"items":0,"estMinutes":0,"distance":0,"store":"","address":""}\n\nIf it is a BATCH order showing 2 orders, return ONLY this JSON:\n{"type":"batch","totalPay":0,"orders":[{"store":"","address":"","items":0,"pay":0},{"store":"","address":"","items":0,"pay":0}],"bonus":0,"estMinutes":0,"distance":0}\n\nRules:\n- type = "single" or "batch"\n- For single: pay=total, basePay=base only, tip=tip if visible(0 if hidden), bonus=any bonus, items=count, estMinutes=minutes(midpoint if range), distance=miles, store=name, address=full address\n- For batch: totalPay=combined pay shown, each order gets its own store/address/items/pay if shown separately, bonus=any bonus, estMinutes=total time, distance=total miles\n- Return ONLY the JSON object. No markdown, no explanation.';
+
+  var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:400,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mime,data:b64}},{type:'text',text:prompt}]}]})});
+  var responseText=await resp.text();
+  if (!resp.ok) throw new Error('API '+resp.status+': '+responseText.slice(0,150));
+  var parsed; try{parsed=JSON.parse(responseText);}catch(e){throw new Error('Bad response');}
+  var text='';
+  if (parsed.content&&Array.isArray(parsed.content)){for(var i=0;i<parsed.content.length;i++){if(parsed.content[i].type==='text'){text=parsed.content[i].text;break;}}}
+  if (!text) throw new Error('No text in response');
+  var od=null; try{od=JSON.parse(text.trim());}catch(e){}
+  if (!od){var m=text.match(/\{[\s\S]*\}/);if(m){try{od=JSON.parse(m[0]);}catch(e){}}}
+  if (!od){od={type:'single'};['pay','basePay','tip','bonus','items','estMinutes','distance'].forEach(function(f){var mx=text.match(new RegExp('"'+f+'"\\s*:\\s*([\\d.]+)'));od[f]=mx?parseFloat(mx[1]):0;});var sm=text.match(/"store"\s*:\s*"([^"]*)"/);od.store=sm?sm[1]:'Unknown';var am=text.match(/"address"\s*:\s*"([^"]*)"/);od.address=am?am[1]:'';}
+
+  // If batch screenshot detected, return an array marker so analyzeAll can split it into 2 orders
+  if (od.type==='batch' && od.orders && od.orders.length>=2) {
+    var totalPay=parseFloat(od.totalPay)||0;
+    var splitPay=totalPay/od.orders.length;
+    return {
+      _isBatch: true,
+      _orders: od.orders.map(function(sub,i){
+        var subPay=parseFloat(sub.pay)||splitPay;
+        return {
+          pay:subPay, basePay:subPay, tip:0, bonus:i===0?(parseFloat(od.bonus)||0):0,
+          items:parseInt(sub.items)||0, estMinutes:parseFloat(od.estMinutes)||30,
+          distance:parseFloat(od.distance)||0,
+          store:String(sub.store||'Unknown'), address:String(sub.address||''),
+          batchGroup:true, batchScreenshot:true
+        };
+      })
+    };
+  }
+
+  // Single order
+  var o={pay:parseFloat(od.pay)||0,basePay:parseFloat(od.basePay)||0,tip:parseFloat(od.tip)||0,bonus:parseFloat(od.bonus)||0,items:parseInt(od.items)||0,estMinutes:parseFloat(od.estMinutes)||30,distance:parseFloat(od.distance)||0,store:String(od.store||'Unknown'),address:String(od.address||'')};
+  if (!o.pay&&(o.basePay||o.tip)) o.pay=o.basePay+o.tip+o.bonus;
+  return o;
+}
+
+// ════════ SCORING ════════
+function scoreOrder(o,tipBonus,batchBonus) {
+  var s=0, ppm=o.estMinutes>0?o.pay/o.estMinutes:0, tppm=settings.targetRate/60;
+  s+=Math.min(45,(ppm/Math.max(tppm,0.001))*45);
+  if (o.pay>=settings.minPay) s+=20; else s-=20;
+  if (o.items>settings.maxItems) s-=15; else if (o.items>35) s-=5; else if (o.items>0&&o.items<=20) s+=8;
+  if (o.distance>settings.maxMiles) s-=15; else if (o.distance>5) s-=5; else if (o.distance>0&&o.distance<=3) s+=8;
+  if (o.tip>3) s+=5; if (o.bonus>0) s+=5;
+  s+=(tipBonus||0); s+=(batchBonus||0);
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+function verdict(sc){return sc>=65?'take':sc>=40?'maybe':'skip';}
+function vlabel(sc){return sc>=65?'Take it':sc>=40?'Maybe':'Skip';}
+function vcls(sc){return sc>=65?'vp-take':sc>=40?'vp-maybe':'vp-skip';}
+function scol(sc){return sc>=65?'var(--green)':sc>=40?'var(--amber)':'var(--red)';}
+function buildReason(o) {
+  var ppm=o.estMinutes>0?(o.pay/o.estMinutes).toFixed(2):'?', tppm=(settings.targetRate/60).toFixed(2), p=[];
+  if (o.pay>=settings.minPay) p.push('$'+o.pay.toFixed(2)+' meets your $'+settings.minPay+' minimum.'); else p.push('$'+o.pay.toFixed(2)+' is below your $'+settings.minPay+' minimum.');
+  if (o.estMinutes) p.push('~'+o.estMinutes+'min = $'+ppm+'/min (target $'+tppm+'/min).');
+  if (o.items>settings.maxItems) p.push(o.items+' items exceeds your limit.'); else if (o.items>0) p.push(o.items+(o.items<=20?' items - quick shop.':" items."));
+  if (o.distance>settings.maxMiles) p.push(o.distance+'mi exceeds your limit.'); else if (o.distance>0) p.push(o.distance+'mi within range.');
+  if (o.bonus>0) p.push('Includes $'+o.bonus.toFixed(2)+' bonus!');
+  return p.join(' ');
+}
+
+// ════════ CLAIM ════════
+function claimOrder(idx) {
+  var o=currentResults[idx]; if (!o||o.claimed) return;
+  o.claimed=true;
+  var c={id:'c'+Date.now(),store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg'};
+  claimedOrders.unshift(c); saveAllAndSync(); renderBadge(); renderResults();
+  notify('Claimed! Add tip in Pending Tips when it arrives.');
+}
+function claimBatch(idxArr) {
+  var names=[];
+  idxArr.forEach(function(idx){
+    var o=currentResults[idx]; if (!o||o.claimed) return;
+    o.claimed=true;
+    var c={id:'c'+Date.now()+idx,store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now()+idx,imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg',batchGroup:true};
+    claimedOrders.unshift(c); names.push(o.store);
+  });
+  saveAllAndSync(); renderBadge(); renderResults();
+  notify('Batch claimed: '+names.join(' + ')+'!');
+}
+function unclaimResult(idx){var o=currentResults[idx];if(!o)return;o.claimed=false;renderResults();notify('Unclaimed');}
+function removeClaimed(id){claimedOrders=claimedOrders.filter(function(o){return o.id!==id;});saveAll();renderBadge();renderStats();renderPendingTips();notify('Removed');}
+
+// ════════ BUILD & RENDER RESULTS ════════
+function buildResults() {
+  currentResults=queue.filter(function(q){return q.data&&!q.data._placeholder;}).map(function(q){return Object.assign({},q.data);});
+  // Run batch detection and apply boost to scores
+  var intel=buildTipIntelligence();
+  var batches=findBatches(currentResults);
+  // Track which indices are in a batch and their boost
+  var batchMap={}; // idx -> {partnerIdxs, blocks, boost}
+  batches.forEach(function(group){
+    // Find min blocks among the group
+    var minBlocks=999;
+    for (var a=0;a<group.length;a++){for(var b=a+1;b<group.length;b++){var bl=estimateBlockDistance(currentResults[group[a]].address,currentResults[group[b]].address);if(bl<minBlocks)minBlocks=bl;}}
+    var boost=batchScoreBoost(minBlocks);
+    group.forEach(function(idx){
+      var partners=group.filter(function(i){return i!==idx;});
+      batchMap[idx]={partners:partners,blocks:minBlocks,boost:boost};
+      currentResults[idx].batchBonus=boost;
+      currentResults[idx].tipBonus=tipIntelBonus(currentResults[idx],intel);
+      currentResults[idx].score=scoreOrder(currentResults[idx],currentResults[idx].tipBonus,boost);
+    });
+  });
+  // Re-score non-batch orders
+  currentResults.forEach(function(o,idx){
+    if (!batchMap[idx]){
+      o.tipBonus=tipIntelBonus(o,intel);
+      o.batchBonus=0;
+      o.score=scoreOrder(o,o.tipBonus,0);
+    }
+  });
+  currentResults._batchMap=batchMap;
+  renderResults();
+  goTab('results',document.querySelectorAll('.tab')[1]);
+}
+
+function sortBy(key,btn){
+  currentSort=key;
+  document.querySelectorAll('.sort-btn').forEach(function(b){b.classList.remove('on');});
+  if (btn) btn.classList.add('on');
+  renderResults();
+}
+
+function renderResults() {
+  var rc=document.getElementById('resultsContent'), re=document.getElementById('resultsEmpty');
+  if (!currentResults.length){rc.style.display='none';re.style.display='block';return;}
+  rc.style.display='block'; re.style.display='none';
+  var intel=buildTipIntelligence();
+  var batchMap=currentResults._batchMap||{};
+  var sorted=currentResults.slice().sort(function(a,b){
+    if (currentSort==='pay') return b.pay-a.pay;
+    if (currentSort==='time') return a.estMinutes-b.estMinutes;
+    if (currentSort==='ppm') return (b.pay/Math.max(1,b.estMinutes))-(a.pay/Math.max(1,a.estMinutes));
+    if (currentSort==='tip_intel') return (b.tipBonus||0)-(a.tipBonus||0);
+    return b.score-a.score;
+  });
+  var indexMap=new Map(currentResults.map(function(o,i){return [o,i];}));
+  var takes=sorted.filter(function(o){return !o.claimed&&verdict(o.score)==='take';});
+  var takePay=takes.reduce(function(s,o){return s+o.pay;},0);
+  document.getElementById('sumBanner').innerHTML='<div class="sum-banner"><div class="sum-title">'+sorted.length+' orders analyzed</div><div class="sum-grid"><div class="sum-item"><div class="lbl">Take</div><div class="val">'+takes.length+'</div></div><div class="sum-item"><div class="lbl">Maybe</div><div class="val">'+sorted.filter(function(o){return !o.claimed&&verdict(o.score)==='maybe';}).length+'</div></div><div class="sum-item"><div class="lbl">Claimed</div><div class="val">'+sorted.filter(function(o){return o.claimed;}).length+'</div></div></div>'+(takes.length?'<div class="sum-note">Take all recommended - $'+takePay.toFixed(2)+'</div>':'')+'</div>';
+
+  // Render batch suggestions at top
+  var batches=findBatches(currentResults);
+  var batchHTML='';
+  var shownBatches=new Set();
+  batches.forEach(function(group){
+    var key=group.slice().sort().join('-');
+    if (shownBatches.has(key)) return;
+    shownBatches.add(key);
+    var allClaimed=group.every(function(idx){return currentResults[idx].claimed;});
+    if (allClaimed) return;
+    var minBlocks=999;
+    for (var a=0;a<group.length;a++){for(var b=a+1;b<group.length;b++){var bl=estimateBlockDistance(currentResults[group[a]].address,currentResults[group[b]].address);if(bl<minBlocks)minBlocks=bl;}}
+    var driveMin=blocksToMinutes(minBlocks), driveMi=blocksToMiles(minBlocks), boost=batchScoreBoost(minBlocks);
+    var totalPay=group.reduce(function(s,idx){return s+currentResults[idx].pay;},0);
+    var pillsHTML=group.map(function(idx){
+      var o=currentResults[idx];
+      return '<div class="batch-order-pill"><div><div class="batch-order-name">'+o.store+'</div><div class="batch-order-detail">$'+o.pay.toFixed(2)+(o.address?' · '+o.address.split(',')[0]:'')+'</div></div><span style="font-size:11px;color:var(--teal);font-weight:500;">'+o.items+' items</span></div>';
+    }).join('');
+    var idxStr=group.join(',');
+    batchHTML+='<div class="batch-banner"><div class="batch-banner-title">🚗 Batch opportunity — '+driveMi+'mi apart</div><div class="batch-banner-body">These '+group.length+' orders deliver ~'+driveMin+' min apart. Taking them together earns you $'+totalPay.toFixed(2)+' in one trip — each order gets +'+boost+'pts to its score.</div><div class="batch-orders">'+pillsHTML+'</div><button class="batch-claim-btn" onclick="claimBatch(['+idxStr+'])">Claim both orders together ✓</button><div class="batch-score-boost">Each order score boosted +'+boost+'pts for batch efficiency</div></div>';
+  });
+  document.getElementById('batchSuggestions').innerHTML=batchHTML;
+
+  document.getElementById('orderCards').innerHTML=sorted.map(function(o){
+    var idx=indexMap.get(o); var tipInfo=tipPotentialLabel(o,intel);
+    var bInfo=batchMap[idx];
+    return '<div class="ocard '+(o.claimed?'claimed-style':verdict(o.score))+'"><div class="ocard-head"><div><div class="ocard-pay">$'+o.pay.toFixed(2)+'</div><div class="ocard-store">'+o.store+(o.address?' · '+o.address:'')+'</div>'+(tipInfo?'<span class="tip-badge '+tipInfo.cls+'">'+tipInfo.label+' (avg $'+tipInfo.avg.toFixed(2)+')</span>':'')+(bInfo?'<div style="font-size:10px;color:var(--teal);margin-top:3px;">🚗 Batch: +'+bInfo.boost+'pts · ~'+blocksToMiles(bInfo.blocks)+'mi to partner</div>':'')+'</div><span class="vp '+(o.claimed?'vp-claimed':vcls(o.score))+'">'+(o.claimed?'Claimed':vlabel(o.score))+'</span></div><div class="ocard-stats">'+(o.items?'<div class="ostat"><div class="ostat-k">Items</div><div class="ostat-v">'+o.items+'</div></div>':'')+(o.estMinutes?'<div class="ostat"><div class="ostat-k">Est. time</div><div class="ostat-v">~'+o.estMinutes+'min</div></div>':'')+(o.distance?'<div class="ostat"><div class="ostat-k">Drive</div><div class="ostat-v">'+o.distance+'mi</div></div>':'')+'<div class="ostat"><div class="ostat-k">$/min</div><div class="ostat-v">'+(o.estMinutes>0?'$'+(o.pay/o.estMinutes).toFixed(2):'—')+'</div></div>'+(o.tip?'<div class="ostat"><div class="ostat-k">Tip shown</div><div class="ostat-v" style="color:var(--green);">$'+o.tip.toFixed(2)+'</div></div>':'')+(o.bonus?'<div class="ostat"><div class="ostat-k">Bonus</div><div class="ostat-v" style="color:var(--green);">+$'+o.bonus.toFixed(2)+'</div></div>':'')+'</div><div class="ocard-reason">'+buildReason(o)+'</div><div class="score-row"><span class="score-lbl">Score</span><div class="score-track"><div class="score-bar" style="width:'+o.score+'%;background:'+scol(o.score)+';"></div></div><span class="score-num" style="color:'+scol(o.score)+';">'+o.score+'/100</span></div><div class="ocard-actions">'+(o.claimed?'<button class="btn-sm r" onclick="unclaimResult('+idx+')">Remove from claimed</button>':'<button class="btn-sm filled" onclick="claimOrder('+idx+')">I claimed this ✓</button>')+'</div>'+(o.imgB64?'<img class="ocard-img" src="data:'+o.imgMime+';base64,'+o.imgB64+'" alt="" loading="lazy">':'')+'</div>';
+  }).join('');
+}
+
+// ════════ STATS ════════
+function setPeriod(period,btn){ currentPeriod=period; document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('on');}); if(btn) btn.classList.add('on'); renderStats(); }
+function filterByPeriod(orders,period) {
+  var now=new Date(), tod=new Date(); tod.setHours(0,0,0,0);
+  var wk=new Date(); wk.setDate(wk.getDate()-wk.getDay()); wk.setHours(0,0,0,0);
+  var mo=new Date(now.getFullYear(),now.getMonth(),1);
+  if (period==='today') return orders.filter(function(o){return new Date(o.ts)>=tod;});
+  if (period==='week') return orders.filter(function(o){return new Date(o.ts)>=wk;});
+  if (period==='month') return orders.filter(function(o){return new Date(o.ts)>=mo;});
+  if (period==='last50') return orders.slice(0,50);
+  return orders;
+}
+function renderStats() {
+  var orders=filterByPeriod(claimedOrders,currentPeriod);
+  var totalBase=orders.reduce(function(s,o){return s+(o.basePay||0);},0);
+  var totalTips=orders.reduce(function(s,o){return s+(o.confirmedTip!=null?o.confirmedTip:(o.tip||0));},0);
+  var totalBonus=orders.reduce(function(s,o){return s+(o.bonus||0);},0);
+  var totalEarned=totalBase+totalTips+totalBonus;
+  var totalMins=orders.reduce(function(s,o){return s+(o.estMinutes||0);},0);
+  var totalMiles=orders.reduce(function(s,o){return s+(o.distance||0);},0);
+  var hourly=totalMins>0?totalEarned/(totalMins/60):0;
+  var avg=orders.length>0?totalEarned/orders.length:0;
+  var tipRate=totalEarned>0?totalTips/totalEarned:0;
+  var pending=orders.filter(function(o){return o.confirmedTip==null;}).length;
+  document.getElementById('kpiEarned').textContent='$'+totalEarned.toFixed(2);
+  document.getElementById('kpiEarnedSub').textContent=pending>0?pending+' tips still pending':'all confirmed';
+  document.getElementById('kpiRate').textContent=hourly>0?'$'+hourly.toFixed(2):'--';
+  document.getElementById('kpiRateSub').textContent=totalMins>0?Math.round(totalMins)+' mins total':'no time data';
+  document.getElementById('kpiOrders').textContent=orders.length;
+  document.getElementById('kpiOrdersSub').textContent=currentPeriod==='last50'?'last 50':currentPeriod;
+  document.getElementById('kpiAvg').textContent='$'+avg.toFixed(2);
+  document.getElementById('kpiTips').textContent='$'+totalTips.toFixed(2);
+  document.getElementById('kpiTipsSub').textContent=pending+' pending';
+  document.getElementById('kpiTipRate').textContent=(tipRate*100).toFixed(0)+'%';
+  document.getElementById('kpiMiles').textContent=totalMiles.toFixed(1);
+  document.getElementById('kpiDeduct').textContent='$'+(totalMiles*0.70).toFixed(2);
+  // Region stats
+  var rMap={};
+  claimedOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);var region=o.region||extractRegion(o.address||'');if(region==='Unknown'||region==='Other')return;if(!rMap[region])rMap[region]={tips:[],count:0};rMap[region].tips.push(tip);rMap[region].count++;});
+  var rArr=Object.keys(rMap).map(function(r){var d=rMap[r];var avg=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length;return{region:r,avg:avg,count:d.count};}).sort(function(a,b){return b.avg-a.avg;});
+  var maxR=rArr.length>0?Math.max.apply(null,rArr.map(function(r){return r.avg;})):1;
+  document.getElementById('regionStats').innerHTML=rArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from different areas to compare regions.</div>':rArr.map(function(r){return '<div class="region-row"><div class="region-name">'+r.region+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(r.avg/Math.max(maxR,0.01)*100)+'%;"></div></div><div class="region-stats"><div class="region-avg">$'+r.avg.toFixed(2)+'</div><div class="region-count">'+r.count+' orders</div></div></div>';}).join('');
+  // Store stats
+  var sMap={};
+  claimedOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);if(!sMap[o.store])sMap[o.store]={tips:[],count:0};sMap[o.store].tips.push(tip);sMap[o.store].count++;});
+  var sArr=Object.keys(sMap).map(function(s){var d=sMap[s];var avg=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length;return{store:s,avg:avg,count:d.count};}).sort(function(a,b){return b.avg-a.avg;});
+  var maxS=sArr.length>0?Math.max.apply(null,sArr.map(function(s){return s.avg;})):1;
+  document.getElementById('storeStats').innerHTML=sArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from multiple stores to compare.</div>':sArr.map(function(s){return '<div class="region-row"><div class="region-name">'+s.store+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(s.avg/Math.max(maxS,0.01)*100)+'%;"></div></div><div class="region-stats"><div class="region-avg">$'+s.avg.toFixed(2)+' avg</div><div class="region-count">'+s.count+' orders</div></div></div>';}).join('');
+  // Claimed list
+  var cl=document.getElementById('claimedList');
+  if (!claimedOrders.length){cl.innerHTML='<div style="font-size:12px;color:var(--muted);">No claimed orders yet.</div>';return;}
+  cl.innerHTML=claimedOrders.slice(0,30).map(function(o){
+    var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);
+    var total=(o.basePay||0)+tip+(o.bonus||0);
+    return '<div class="cl-item"><div><div style="font-size:13px;font-weight:500;">'+o.store+(o.batchGroup?' <span style="font-size:10px;color:var(--teal);">[batch]</span>':'')+'</div><div style="font-size:11px;color:var(--muted);">'+(o.items?o.items+' items · ':'')+new Date(o.ts).toLocaleDateString()+(o.confirmedTip==null?' · <span style="color:var(--amber);">tip pending</span>':'')+'</div></div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:15px;font-weight:500;color:var(--green);">$'+total.toFixed(2)+'</div><button class="btn-sm r" onclick="removeClaimed(\''+o.id+'\')">X</button></div></div>';
+  }).join('');
+}
+
+// ════════ PENDING TIPS ════════
+function buildOrderCard(o, num, isPending) {
+  var claimTime = new Date(o.ts);
+  var timeStr = claimTime.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' + claimTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  var totalBase = (o.basePay||0) + (o.bonus||0);
+  var batchTag = (o.batchGroup||o.batchScreenshot) ? ' <span style="font-size:10px;color:var(--teal);">[batch]</span>' : '';
+  var numBadge = num != null ? '<div class="pt-num">'+num+'</div>' : '';
+
+  // Details panel (read-only view)
+  var detailsPanel = '<div class="pt-details" id="ptd-'+o.id+'">'
+    + '<div class="pt-details-row"><span class="pt-details-key">Store</span><span class="pt-details-val">'+o.store+'</span></div>'
+    + '<div class="pt-details-row"><span class="pt-details-key">Address</span><span class="pt-details-val">'+(o.address||'Not recorded')+'</span></div>'
+    + '<div class="pt-details-row"><span class="pt-details-key">Region</span><span class="pt-details-val">'+(o.region||extractRegion(o.address||''))+'</span></div>'
+    + '<div class="pt-details-row"><span class="pt-details-key">Claimed at</span><span class="pt-details-val">'+timeStr+'</span></div>'
+    + '<div class="pt-details-row"><span class="pt-details-key">Base pay</span><span class="pt-details-val">$'+(o.basePay||0).toFixed(2)+'</span></div>'
+    + (o.bonus ? '<div class="pt-details-row"><span class="pt-details-key">Bonus</span><span class="pt-details-val">$'+o.bonus.toFixed(2)+'</span></div>' : '')
+    + '<div class="pt-details-row"><span class="pt-details-key">Items</span><span class="pt-details-val">'+(o.items||'?')+'</span></div>'
+    + '<div class="pt-details-row"><span class="pt-details-key">Est. time</span><span class="pt-details-val">'+(o.estMinutes?'~'+o.estMinutes+'min':'?')+'</span></div>'
+    + '<div class="pt-details-row"><span class="pt-details-key">Distance</span><span class="pt-details-val">'+(o.distance?o.distance+'mi':'?')+'</span></div>'
+    + (!isPending && o.confirmedTip != null ? '<div class="pt-details-row"><span class="pt-details-key">Confirmed tip</span><span class="pt-details-val" style="color:var(--amber);">$'+o.confirmedTip.toFixed(2)+'</span></div>' : '')
+    + (o.imgB64 ? '<img src="data:'+o.imgMime+';base64,'+o.imgB64+'" alt="Order screenshot" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--rs);margin-top:8px;border:1px solid var(--border);">' : '')
+    + '</div>';
+
+  // Edit panel
+  var editPanel = '<div class="pt-details" id="pte-'+o.id+'" style="background:var(--blue-light);border:1px solid #bfdbfe;">'
+    + '<div style="font-size:11px;font-weight:500;color:var(--blue);margin-bottom:10px;">Edit order details — changes save immediately</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + editField('Store', 'text', 'pte-store-'+o.id, o.store||'')
+    + editField('Address', 'text', 'pte-addr-'+o.id, o.address||'')
+    + editField('Base pay ($)', 'number', 'pte-base-'+o.id, o.basePay||0)
+    + editField('Bonus ($)', 'number', 'pte-bonus-'+o.id, o.bonus||0)
+    + editField('Items', 'number', 'pte-items-'+o.id, o.items||0)
+    + editField('Est. time (min)', 'number', 'pte-mins-'+o.id, o.estMinutes||0)
+    + editField('Distance (mi)', 'number', 'pte-dist-'+o.id, o.distance||0)
+    + '</div>'
+    + '<button class="pt-save-btn" onclick="saveOrderEdits(\''+o.id+'\')" style="width:100%;margin-top:10px;padding:10px;">Save changes</button>'
+    + '</div>';
+
+  var header = '<div class="pt-header">'
+    + numBadge
+    + '<div class="pt-main"><div class="pt-store">'+o.store+batchTag+'</div><div class="pt-meta">'+(o.address||o.region||'No address')+'</div></div>'
+    + '<div class="pt-pay">$'+totalBase.toFixed(2)+'</div>'
+    + '</div>';
+
+  var toggleBtns = '<div style="display:flex;gap:8px;margin:6px 0 4px;">'
+    + '<button class="pt-toggle" onclick="togglePanel(\'ptd-'+o.id+'\',this)" style="flex:1;">More details ▾</button>'
+    + '<button class="pt-toggle" onclick="togglePanel(\'pte-'+o.id+'\',this)" style="flex:1;color:var(--blue);">Edit order ✏️</button>'
+    + '</div>';
+
+  var actionBtns = '';
+  if (isPending) {
+    actionBtns = '<div class="pt-input-row"><input class="pt-input" type="number" id="ptip-'+o.id+'" placeholder="Tip amount..." step="0.01" min="0" inputmode="decimal"><button class="pt-save-btn" onclick="confirmTip(\''+o.id+'\')">Save tip</button></div>'
+      + '<button class="btn-sm r" onclick="unclaimFromTips(\''+o.id+'\')" style="width:100%;text-align:center;margin-top:6px;">Remove this order entirely</button>';
+  } else {
+    actionBtns = '<div style="display:flex;gap:6px;margin-top:4px;">'
+      + '<button class="btn-sm r" onclick="unconfirmTip(\''+o.id+'\')" style="flex:1;text-align:center;">Undo tip</button>'
+      + '<button class="btn-sm r" onclick="unclaimFromTips(\''+o.id+'\')" style="flex:1;text-align:center;">Remove order</button>'
+      + '</div>';
+  }
+
+  return '<div class="pt-item">'+header+toggleBtns+detailsPanel+editPanel+actionBtns+'</div>';
+}
+
+function editField(label, type, id, val) {
+  return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
+    + '<label style="font-size:11px;color:var(--blue);white-space:nowrap;">'+label+'</label>'
+    + '<input type="'+type+'" id="'+id+'" value="'+val+'" step="'+(type==='number'?'0.01':'')
+    +'" style="width:130px;padding:6px 8px;font-size:13px;border:1px solid #bfdbfe;border-radius:var(--rs);background:#fff;color:var(--text);font-family:var(--fm);text-align:right;">'
+    + '</div>';
+}
+
+function saveOrderEdits(id) {
+  var order = claimedOrders.find(function(o){ return o.id===id; });
+  if (!order) return;
+  var storeEl = document.getElementById('pte-store-'+id);
+  var addrEl  = document.getElementById('pte-addr-'+id);
+  var baseEl  = document.getElementById('pte-base-'+id);
+  var bonusEl = document.getElementById('pte-bonus-'+id);
+  var itemsEl = document.getElementById('pte-items-'+id);
+  var minsEl  = document.getElementById('pte-mins-'+id);
+  var distEl  = document.getElementById('pte-dist-'+id);
+  if (storeEl) order.store     = storeEl.value.trim() || order.store;
+  if (addrEl)  { order.address = addrEl.value.trim(); order.region = extractRegion(order.address); }
+  if (baseEl)  order.basePay   = parseFloat(baseEl.value)  || 0;
+  if (bonusEl) order.bonus     = parseFloat(bonusEl.value) || 0;
+  if (itemsEl) order.items     = parseInt(itemsEl.value)   || 0;
+  if (minsEl)  order.estMinutes = parseFloat(minsEl.value) || 0;
+  if (distEl)  order.distance  = parseFloat(distEl.value)  || 0;
+  saveAllAndSync(); renderPendingTips(); renderStats();
+  notify('Order updated!');
+}
+
+function renderPendingTips() {
+  var pending   = claimedOrders.filter(function(o){ return o.confirmedTip==null; });
+  var confirmed = claimedOrders.filter(function(o){ return o.confirmedTip!=null; });
+
+  var pl = document.getElementById('pendingTipsList');
+  if (!pending.length) {
+    pl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">All tips confirmed! Great work.</div>';
+  } else {
+    pl.innerHTML = pending.map(function(o,i){ return buildOrderCard(o, i+1, true); }).join('');
+  }
+
+  var ctl = document.getElementById('confirmedTipsList');
+  if (!confirmed.length) {
+    ctl.innerHTML = '<div style="font-size:12px;color:var(--muted);">No confirmed tips yet.</div>';
+  } else {
+    ctl.innerHTML = confirmed.slice(0,20).map(function(o){ return buildOrderCard(o, null, false); }).join('');
+  }
+}
+
+function togglePanel(id, btn) {
+  var el = document.getElementById(id); if (!el) return;
+  el.classList.toggle('open');
+  var isOpen = el.classList.contains('open');
+  // Update just this button's text, not sibling
+  if (btn) {
+    if (id.startsWith('pte-')) {
+      btn.textContent = isOpen ? 'Close edit ✏️' : 'Edit order ✏️';
+      btn.style.color = 'var(--blue)';
+    } else {
+      btn.textContent = isOpen ? 'Less details ▴' : 'More details ▾';
+    }
+  }
+}
+
+function confirmTip(id){
+  var inp=document.getElementById('ptip-'+id); if(!inp)return;
+  var tipVal=parseFloat(inp.value);
+  if (isNaN(tipVal)||tipVal<0){notify('Enter a tip amount (0 if no tip)',true);return;}
+  var order=claimedOrders.find(function(o){return o.id===id;});
+  if (!order)return;
+  order.confirmedTip=tipVal; saveAllAndSync(); renderPendingTips(); renderStats();
+  notify('$'+tipVal.toFixed(2)+' tip saved - KPIs updated!');
+}
+
+function unconfirmTip(id){
+  var order=claimedOrders.find(function(o){return o.id===id;});
+  if (!order)return;
+  if (!confirm('Move "$'+order.confirmedTip.toFixed(2)+' tip" back to pending so you can re-enter it?')) return;
+  order.confirmedTip=null; saveAllAndSync(); renderPendingTips(); renderStats();
+  notify('Tip moved back to pending — enter the correct amount.');
+}
+function unclaimFromTips(id){
+  if (!confirm('Remove this order from your claimed list entirely?')) return;
+  claimedOrders = claimedOrders.filter(function(o){ return o.id !== id; });
+  saveAllAndSync(); renderBadge(); renderPendingTips(); renderStats();
+  notify('Order removed from claimed.');
+}
+</script>
+</body>
+</html>
