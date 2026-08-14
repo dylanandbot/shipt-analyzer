@@ -228,6 +228,7 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
   </div>
   <div class="tabs">
     <button class="tab on" onclick="goTab('analyze',this)">Analyze</button>
+    <button class="tab" onclick="goTab('active',this)">Active</button>
     <button class="tab" onclick="goTab('results',this)">Results</button>
     <button class="tab" onclick="goTab('stats',this)">Stats</button>
     <button class="tab" onclick="goTab('tips',this)">Pending Tips</button>
@@ -236,6 +237,14 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
 </div>
 
 <div class="main">
+
+<!-- ACTIVE ORDERS -->
+<div class="sec" id="sec-active">
+  <div class="card">
+    <div class="card-title">Active Orders</div>
+    <div style="font-size:12px;color:var(--muted);">This tab will manage your active deliveries and track time.</div>
+  </div>
+</div>
 
 <!-- ANALYZE -->
 <div class="sec on" id="sec-analyze">
@@ -453,6 +462,7 @@ function goTab(id, btn) {
   if (id === 'stats') renderStats();
   if (id === 'tips') renderPendingTips();
   if (id === 'settings') { updateStorageInfo(); renderSheetStatus(); }
+  if (id === 'active') { /* Placeholder for active tab rendering */ }
 }
 function renderBadge() { document.getElementById('cbadge').textContent = claimedOrders.length + ' claimed'; }
 function updateStorageInfo() {
