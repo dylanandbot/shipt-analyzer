@@ -90,7 +90,7 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
 .prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width 0.4s;}
 .prog-lbl{font-size:11px;color:var(--muted);margin-top:6px;text-align:center;}
 .sort-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
-.sort-btn{padding:5px 10px;font-size:10px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;transition:all 0.15s;}
+.sort-btn{padding:5px 10px;font-size:10px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;transition:all 0.15s;white-space:nowrap;}
 .sort-btn.on{background:var(--green);color:#fff;border-color:var(--green);}
 
 /* ORDER CARDS */
@@ -222,14 +222,14 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
   <div class="topbar-row">
     <div><div class="app-name">Shipt Analyzer</div><div class="app-sub">Lincoln, NE</div></div>
     <div class="hdr-right">
-      <div class="cbadge" id="cbadge">0 claimed</div>
-      <div class="key-dot" id="keyDot" onclick="goTab('settings',document.querySelectorAll('.tab')[4])"></div>
+      <div class="cbadge" id="claimedBadge">0 claimed</div>
+      <div class="key-dot" id="keyDot" onclick="goTab('settings',document.querySelectorAll('.tab')[5])"></div>
     </div>
   </div>
   <div class="tabs">
     <button class="tab on" onclick="goTab('analyze',this)">Analyze</button>
-    <button class="tab" onclick="goTab('active',this)">Active</button>
     <button class="tab" onclick="goTab('results',this)">Results</button>
+    <button class="tab" onclick="goTab('active',this)">Active</button>
     <button class="tab" onclick="goTab('stats',this)">Stats</button>
     <button class="tab" onclick="goTab('tips',this)">Pending Tips</button>
     <button class="tab" onclick="goTab('settings',this)">Settings</button>
@@ -242,7 +242,7 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
 <div class="sec" id="sec-active">
   <div class="card">
     <div class="card-title">Active Orders</div>
-    <div style="font-size:12px;color:var(--muted);">This tab will manage your active deliveries and track time.</div>
+    <div id="activeOrdersList"><div style="font-size:12px;color:var(--muted);padding:8px 0;text-align:center;">No active orders yet. Claim orders from the Results tab.</div></div>
   </div>
 </div>
 
@@ -264,7 +264,7 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
       <div class="proc-list" id="procList"></div>
       <div class="prog-wrap" id="progWrap" style="display:none;">
         <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
-        <div class="prog-lbl" id="progLbl">Reading...</div>
+        <div class="prog-lbl">Reading...</div>
       </div>
     </div>
     <button class="btn btn-green" id="analyzeBtn" onclick="analyzeAll()">Read all screenshots</button>
@@ -326,10 +326,10 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
     <div id="storeStats"><div style="font-size:12px;color:var(--muted);">Claim orders from multiple stores to compare.</div></div>
   </div>
   <div class="card">
-    <div class="card-title">Claimed orders
-      <button class="btn-sm r" onclick="if(confirm('Remove all claimed orders?')){claimedOrders=[];saveAll();renderBadge();renderStats();renderPendingTips();notify('Cleared');}">Clear all</button>
+    <div class="card-title">Completed Runs
+      <button class="btn-sm r" onclick="if(confirm('Clear ALL completed run history? This cannot be undone.')){completedRuns=[];saveAll();renderStats();notify('Cleared');}">Clear all</button>
     </div>
-    <div id="claimedList"><div style="font-size:12px;color:var(--muted);">No claimed orders yet.</div></div>
+    <div id="statsList"><div style="font-size:12px;color:var(--muted);">No completed runs yet.</div></div>
   </div>
 </div>
 
@@ -372,6 +372,19 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
     <div class="set-row"><div><div class="set-lbl">Tip intel weight (0-5)</div><div class="set-sub">How much tip history affects score</div></div><input class="set-input" type="number" id="sTipWeight" value="2" step="0.5" min="0" max="5" oninput="saveSettings()"></div>
   </div>
   <div class="card">
+    <div class="card-title">Supabase tip intelligence</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;">Pulls your full tip history from Supabase so scores use every order you've ever synced, not just what's stored on this phone.</div>
+    <div class="key-input-row" style="margin-bottom:8px;">
+      <input class="key-input" type="text" id="supabaseUrlInput" placeholder="https://xxxxx.supabase.co" autocomplete="off" spellcheck="false" style="border-color:var(--border);">
+      <button class="key-save-btn" onclick="saveSupabaseConfig()" style="background:var(--teal);">Save</button>
+    </div>
+    <div class="key-input-row" style="margin-bottom:8px;">
+      <input class="key-input" type="password" id="supabaseKeyInput" placeholder="anon public key" autocomplete="off" spellcheck="false" style="border-color:var(--border);">
+    </div>
+    <div id="supabaseStatus" style="font-size:11px;color:var(--muted);margin-bottom:10px;"></div>
+    <button class="btn" onclick="testSupabase()" style="margin-top:0;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:12px;padding:10px;">Test tip history connection</button>
+  </div>
+  <div class="card">
     <div class="card-title">Batch detection</div>
     <div style="font-size:12px;color:var(--muted);line-height:1.8;">When multiple orders have delivery addresses close together on Lincoln's street grid, the app automatically suggests taking them as a batch. Batch orders get a score boost since you earn more per drive. The closer the addresses, the higher the boost (up to +20pts each).</div>
   </div>
@@ -410,7 +423,7 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
   <div class="card">
     <div class="card-title">Storage</div>
     <div id="storageInfo" style="font-size:12px;color:var(--muted);margin-bottom:10px;">Calculating...</div>
-    <button class="btn" onclick="if(confirm('Clear ALL claimed orders, tips and history? This cannot be undone.')){claimedOrders=[];saveAll();renderBadge();renderStats();renderPendingTips();updateStorageInfo();notify('All data cleared');}" style="background:var(--red-light);color:var(--red);border:1px solid #fca5a5;font-size:12px;padding:10px;margin-top:0;">Clear all order data</button>
+    <button class="btn" onclick="if(confirm('Clear ALL claimed orders, tips and history? This cannot be undone.')){pendingTipOrders=[];completedRuns=[];saveAll();renderBadge();renderStats();renderPendingTips();updateStorageInfo();notify('All data cleared');}" style="background:var(--red-light);color:var(--red);border:1px solid #fca5a5;font-size:12px;padding:10px;margin-top:0;">Clear all order data</button>
   </div>
 </div>
 
@@ -418,33 +431,24 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
 <div class="notif" id="notif"></div>
 
 <script>
-// ════════ STATE ════════
+// ════════ STATE VARIABLES ════════
 var apiKey = localStorage.getItem('soa_key') || '';
 var sheetsUrl = localStorage.getItem('soa_sheets_url') || '';
+var supabaseUrl = localStorage.getItem('soa_supabase_url') || '';
+var supabaseKey = localStorage.getItem('soa_supabase_key') || '';
+var remoteTipIntel = null;
 var settings = JSON.parse(localStorage.getItem('soa_settings') || '{"minPay":10,"maxItems":50,"maxMiles":8,"targetRate":18,"tipWeight":2}');
-var claimedOrders = [];
+var pendingTipOrders = []; 
+
+var completedRuns = []; 
 var currentResults = [];
 var currentSort = 'score';
 var currentPeriod = 'today';
 var queue = [];
 var analyzing = false;
 
-try { claimedOrders = JSON.parse(localStorage.getItem('soa_claimed') || '[]'); } catch(e) { claimedOrders = []; }
-function saveAll() {
-  var toSave = claimedOrders.map(function(o) { var c = Object.assign({}, o); delete c.imgB64; delete c.imgMime; return c; });
-  try {
-    localStorage.setItem('soa_claimed', JSON.stringify(toSave));
-  } catch(e) {
-    notify('Storage full — trimming oldest orders', true);
-    var trimmed = toSave.slice(0, Math.max(1, Math.floor(toSave.length * 0.8)));
-    try { localStorage.setItem('soa_claimed', JSON.stringify(trimmed)); claimedOrders = claimedOrders.slice(0, trimmed.length); }
-    catch(e2) { notify('Storage full — clear old orders in Stats tab', true); }
-  }
-}
+// ════════ FUNCTION DEFINITIONS ════════
 
-applySettings(); renderKeyStatus(); renderKeyBanner(); renderBadge(); setTimeout(function(){ updateStorageInfo(); renderSheetStatus(); }, 100);
-
-// ════════ NOTIFY ════════
 function notify(msg, isErr) {
   var n = document.getElementById('notif');
   n.textContent = msg;
@@ -452,29 +456,240 @@ function notify(msg, isErr) {
   setTimeout(function(){ n.className = 'notif'; }, 3200);
 }
 
-// ════════ NAV ════════
-function goTab(id, btn) {
-  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
-  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('on'); });
-  document.getElementById('sec-' + id).classList.add('on');
-  if (btn) btn.classList.add('on');
-  if (id === 'results') renderResults();
-  if (id === 'stats') renderStats();
-  if (id === 'tips') renderPendingTips();
-  if (id === 'settings') { updateStorageInfo(); renderSheetStatus(); }
-  if (id === 'active') { /* Placeholder for active tab rendering */ }
-}
-function renderBadge() { document.getElementById('cbadge').textContent = claimedOrders.length + ' claimed'; }
-function updateStorageInfo() {
-  var el = document.getElementById('storageInfo'); if (!el) return;
-  var total = 0; try { for (var k in localStorage) { if (localStorage.hasOwnProperty(k)) total += ((localStorage[k]||'').length * 2); } } catch(e) {}
-  var kb = Math.round(total / 1024);
-  var pct = Math.min(100, Math.round(kb / 5120 * 100));
-  var color = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--amber)' : 'var(--green)';
-  el.innerHTML = 'Storage used: <strong style="color:'+color+';">'+kb+'KB / 5120KB ('+pct+'%)</strong><br><span style="color:var(--muted);">'+claimedOrders.length+' orders saved · screenshots not stored (session only)</span>';
+function fileToB64(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});}
+
+function extractRegion(address) {
+  if (!address) return 'Unknown';
+  var a = address.toLowerCase();
+  if (a.match(/downtown|o st|q st|p st|10th|11th|12th|13th|14th|15th|16th/)) return 'Downtown';
+  if (a.match(/south|s 27th|s 40th|s 48th|s 56th|s 70th|s 84th|pine lake|yankee hill/)) return 'South Lincoln';
+  if (a.match(/north|n 27th|n 48th|n 56th|havelock|military|cornhusker/)) return 'North Lincoln';
+  if (a.match(/east|n 84th|n 91st|gateway|84th|91st/)) return 'East Lincoln';
+  if (a.match(/west|pioneers|coddington|w o st|w a st|ridge/)) return 'West Lincoln';
+  if (a.match(/university|unl|vine|holdrege|salt creek/)) return 'University Area';
+  return 'Other';
 }
 
-// ════════ GOOGLE SHEETS SYNC ════════
+function parseLincolnAddress(address) {
+  if (!address) return null;
+  var a = address.toLowerCase();
+  var result = { northSouth: null, eastWest: null };
+
+  var nsMatch = a.match(/([ns]\.?\s*)?(\d+)(?:th|st|nd|rd)\s*(st|street|ave|avenue|blvd)?/);
+  if (nsMatch) result.northSouth = parseInt(nsMatch[2]);
+
+  var ewLetterMatch = a.match(/\b([a-w])\s*(?:st|street)\b/);
+  if (ewLetterMatch) result.eastWest = ewLetterMatch[1].charCodeAt(0) - 'a'.charCodeAt(0);
+
+  var namedStreets = {
+    'vine':10,'holdrege':14,'leighton':17,'adams':21,'calvert':25,
+    'cornhusker':28,'military':34,'fletcher':38,'superior':45,
+    'pioneers':3,'south':6,'pine lake':55,'yankee hill':62,
+    'old cheney':48,'highway 2':40,'nebraska':5,'capitol':2,'k st':10,'p st':15,'q st':16
+  };
+  Object.keys(namedStreets).forEach(function(name) {
+    if (a.includes(name)) result.eastWest = namedStreets[name];
+  });
+
+  return result;
+}
+
+function estimateBlockDistance(addr1, addr2) {
+  var p1 = parseLincolnAddress(addr1);
+  var p2 = parseLincolnAddress(addr2);
+  if (!p1 || !p2) return 999;
+
+  var nsDiff = 999, ewDiff = 999;
+  if (p1.northSouth !== null && p2.northSouth !== null) nsDiff = Math.abs(p1.northSouth - p2.northSouth);
+  if (p1.eastWest !== null && p2.eastWest !== null) ewDiff = Math.abs(p1.eastWest - p2.eastWest);
+
+  if (nsDiff === 999 && ewDiff !== 999) return ewDiff;
+  if (ewDiff === 999 && nsDiff !== 999) return nsDiff;
+  if (nsDiff === 999 && ewDiff === 999) return 999;
+
+  return nsDiff + ewDiff;
+}
+
+function blocksToMiles(blocks) { return (blocks * 0.1).toFixed(1); }
+function blocksToMinutes(blocks) {
+  return Math.round(blocks * 0.1 * 2);
+}
+
+function findBatches(orders) {
+  var CLOSE_BLOCKS = 20; 
+  var batches = [];
+  var used = new Set();
+
+  for (var i = 0; i < orders.length; i++) {
+    if (used.has(i)) continue;
+    var group = [i];
+    for (var j = i + 1; j < orders.length; j++) {
+      if (used.has(j)) continue;
+      if (!orders[i].address || !orders[j].address) continue;
+      var blocks = estimateBlockDistance(orders[i].address, orders[j].address);
+      if (blocks <= CLOSE_BLOCKS) {
+        group.push(j);
+      }
+    }
+    if (group.length >= 2) {
+      var pair = group.slice(0, 3);
+      pair.forEach(function(idx){ used.add(idx); });
+      batches.push(pair);
+    }
+  }
+  return batches;
+}
+
+function batchScoreBoost(blocks) {
+  if (blocks <= 5)  return 20;
+  if (blocks <= 10) return 15;
+  if (blocks <= 20) return 10;
+  return 0;
+}
+
+function scoreOrder(o,tipBonus,batchBonus) {
+  var s=0, ppm=o.estMinutes>0?o.pay/o.estMinutes:0, tppm=settings.targetRate/60;
+  s+=Math.min(45,(ppm/Math.max(tppm,0.001))*45);
+  if (o.pay>=settings.minPay) s+=20; else s-=20;
+  if (o.items>settings.maxItems) s-=15; else if (o.items>35) s-=5; else if (o.items>0&&o.items<=20) s+=8;
+  if (o.distance>settings.maxMiles) s-=15; else if (o.distance>5) s-=5; else if (o.distance>0&&o.distance<=3) s+=8;
+  if (o.tip>3) s+=5; if (o.bonus>0) s+=5;
+  s+=(tipBonus||0); s+=(batchBonus||0);
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+function verdict(sc){return sc>=65?'take':sc>=40?'maybe':'skip';}
+function vlabel(sc){return sc>=65?'Take it':sc>=40?'Maybe':'Skip';}
+function vcls(sc){return sc>=65?'vp-take':sc>=40?'vp-maybe':'vp-skip';}
+function scol(sc){return sc>=65?'var(--green)':sc>=40?'var(--amber)':'var(--red)';}
+function buildReason(o) {
+  var ppm=o.estMinutes>0?(o.pay/o.estMinutes).toFixed(2):'?', tppm=(settings.targetRate/60).toFixed(2), p=[];
+  if (o.pay>=settings.minPay) p.push('$'+o.pay.toFixed(2)+' meets your $'+settings.minPay+' minimum.'); else p.push('$'+o.pay.toFixed(2)+' is below your $'+settings.minPay+' minimum.');
+  if (o.estMinutes) p.push('~'+o.estMinutes+'min = $'+ppm+'/min (target $'+tppm+'/min).');
+  if (o.items>settings.maxItems) p.push(o.items+' items exceeds your limit.'); else if (o.items>35) p.push(o.items+' items.'); else if (o.items>0&&o.items<=20) p.push(o.items+' items - quick shop.');
+  if (o.distance>settings.maxMiles) p.push(o.distance+'mi exceeds your limit.'); else if (o.distance>5) p.push(o.distance+'mi.'); else if (o.distance>0&&o.distance<=3) p.push(o.distance+'mi within range.');
+  if (o.bonus>0) p.push('Includes $'+o.bonus.toFixed(2)+' bonus!');
+  return p.join(' ');
+}
+
+function buildTipIntelligence() {
+  var storeMap = {}, regionMap = {};
+  pendingTipOrders.forEach(function(o) { 
+    var tip = o.confirmedTip != null ? o.confirmedTip : (o.tip || 0);
+    var total = (o.basePay||0) + tip + (o.bonus||0);
+    if (o.store) { if (!storeMap[o.store]) storeMap[o.store] = {tips:[],count:0}; storeMap[o.store].tips.push(tip); storeMap[o.store].count++; }
+    var region = o.region || extractRegion(o.address||'');
+    if (!regionMap[region]) regionMap[region] = {tips:[],totals:[]};
+    regionMap[region].tips.push(tip); regionMap[region].totals.push(total);
+  });
+  var storeIntel = {}, regionIntel = {};
+  Object.keys(storeMap).forEach(function(s) { var d=storeMap[s]; storeIntel[s] = {avgTip:d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length, count:d.count}; });
+  Object.keys(regionMap).forEach(function(r) { var d=regionMap[r]; var avgTip=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length; var avgTotal=d.totals.reduce(function(a,b){return a+b;},0)/d.totals.length; regionIntel[r]={avgTip:avgTip,avgRate:avgTotal>0?avgTip/avgTotal:0,count:d.tips.length}; });
+
+  // Supabase already contains the orders held locally, so the two sets are
+  // merged by taking whichever has seen more orders rather than summing them,
+  // which would double count. Local can legitimately win when a tip was just
+  // confirmed and the sync hasn't landed yet.
+  if (remoteTipIntel) {
+    ['storeIntel','regionIntel'].forEach(function(kind) {
+      var localSide = kind === 'storeIntel' ? storeIntel : regionIntel;
+      var remoteSide = remoteTipIntel[kind] || {};
+      Object.keys(remoteSide).forEach(function(key) {
+        if (!localSide[key] || remoteSide[key].count >= localSide[key].count) localSide[key] = remoteSide[key];
+      });
+    });
+  }
+  return {storeIntel:storeIntel,regionIntel:regionIntel};
+}
+function tipIntelBonus(o, intel) {
+  var weight = settings.tipWeight != null ? settings.tipWeight : 2; if (weight===0) return 0;
+  var bonus = 0, store = o.store||'', region = o.region||extractRegion(o.address||'');
+  if (intel.storeIntel[store] && intel.storeIntel[store].count >= 2) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
+  if (intel.regionIntel[region] && intel.regionIntel[region].count >= 2) bonus += intel.regionIntel[region].avgRate*10*weight;
+  return Math.min(15, Math.round(bonus));
+}
+function tipPotentialLabel(o, intel) {
+  var store=o.store||'', region=o.region||extractRegion(o.address||'');
+  var si=intel.storeIntel[store], ri=intel.regionIntel[region];
+  var src=(si&&si.count>=2)?si:((ri&&ri.count>=2)?ri:null);
+  if (!src) return null;
+  var avg=src.avgTip||0;
+  if (avg>=5) return {label:'High tip area',cls:'high',avg:avg};
+  if (avg>=2) return {label:'Decent tips',cls:'med',avg:avg};
+  return {label:'Low tip area',cls:'low',avg:avg};
+}
+
+function saveAll() {
+  var toSavePendingTips = pendingTipOrders.map(function(o) { var c = Object.assign({}, o); delete c.imgB64; delete c.imgMime; return c; });
+  try {
+    localStorage.setItem('soa_pending_tips', JSON.stringify(toSavePendingTips));
+
+    localStorage.setItem('soa_completed_runs', JSON.stringify(completedRuns));
+  } catch(e) {
+    notify('Storage full — trimming oldest orders', true);
+    var trimmed = toSavePendingTips.slice(0, Math.max(1, Math.floor(toSavePendingTips.length * 0.8)));
+    try { localStorage.setItem('soa_pending_tips', JSON.stringify(trimmed)); pendingTipOrders = pendingTipOrders.slice(0, trimmed.length); }
+    catch(e2) { notify('Storage full — clear old orders in Stats tab', true); }
+  }
+}
+
+function saveAllAndSync() {
+  saveAll();
+  if (sheetsUrl) syncToSheets(true);
+}
+
+async function syncToSheets(silent) {
+  if (!sheetsUrl) { notify('Add your Google Script URL in Settings first', true); return; }
+  if (!pendingTipOrders.length) { if (!silent) notify('No orders to sync yet', true); return; } 
+  var statusEl = document.getElementById('syncStatus');
+  if (statusEl) statusEl.textContent = 'Syncing ' + pendingTipOrders.length + ' orders...';
+  if (!silent) notify('Syncing to Google Sheets...');
+
+  var rows = pendingTipOrders.map(function(o) { 
+    var tip = o.confirmedTip != null ? o.confirmedTip : null;
+    var total = (o.basePay||0) + (tip||0) + (o.bonus||0);
+    return [
+      o.id || '',
+      o.ts ? new Date(o.ts).toLocaleString() : '',
+      o.store || '',
+      o.address || '',
+      o.region || '',
+      (o.basePay||0).toFixed(2),
+      (o.bonus||0).toFixed(2),
+      tip != null ? tip.toFixed(2) : 'pending',
+      tip != null ? total.toFixed(2) : 'pending',
+      o.items || 0,
+      o.estMinutes || 0,
+      o.distance || 0,
+      o.score || 0,
+      (o.batchGroup || o.batchScreenshot) ? 'yes' : 'no',
+      o.status || 'unstarted',
+      o.runStartTime ? new Date(o.runStartTime).toLocaleString() : '',
+      o.runEndTime ? new Date(o.runEndTime).toLocaleString() : '',
+      o.runDurationMinutes != null ? o.runDurationMinutes.toFixed(2) : ''
+    ];
+  });
+
+  var CHUNK = 10;
+  var chunks = [];
+  for (var i = 0; i < rows.length; i += CHUNK) chunks.push(rows.slice(i, i + CHUNK));
+  var total_chunks = chunks.length;
+
+  try {
+    for (var ci = 0; ci < chunks.length; ci++) {
+      var payload = JSON.stringify({ action: 'syncAll', rows: chunks[ci], chunk: ci, total: total_chunks });
+      var encoded = btoa(unescape(encodeURIComponent(payload)));
+      var url = sheetsUrl + '?d=' + encoded;
+      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      if (ci < chunks.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
+    }
+    if (statusEl) statusEl.textContent = 'Last synced: ' + new Date().toLocaleTimeString() + ' · ' + rows.length + ' orders';
+    if (!silent) notify('Synced ' + rows.length + ' orders to Google Sheets!');
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Sync failed: ' + e.message;
+    if (!silent) notify('Sync failed: ' + e.message, true);
+  }
+}
+
 function saveSheetUrl() {
   var inp = document.getElementById('sheetsUrl');
   if (!inp || !inp.value.trim()) { notify('Paste your script URL first', true); return; }
@@ -498,177 +713,85 @@ function renderSheetStatus() {
   }
 }
 
-async function syncToSheets(silent) {
-  if (!sheetsUrl) { notify('Add your Google Script URL in Settings first', true); return; }
-  if (!claimedOrders.length) { if (!silent) notify('No orders to sync yet', true); return; }
-  var statusEl = document.getElementById('syncStatus');
-  if (statusEl) statusEl.textContent = 'Syncing ' + claimedOrders.length + ' orders...';
-  if (!silent) notify('Syncing to Google Sheets...');
+function saveSupabaseConfig() {
+  var u = document.getElementById('supabaseUrlInput'), k = document.getElementById('supabaseKeyInput');
+  if (!u || !k || !u.value.trim() || !k.value.trim()) { notify('Paste both the project URL and anon key', true); return; }
+  supabaseUrl = u.value.trim().replace(/\/+$/, '');
+  supabaseKey = k.value.trim();
+  localStorage.setItem('soa_supabase_url', supabaseUrl);
+  localStorage.setItem('soa_supabase_key', supabaseKey);
+  remoteTipIntel = null;
+  renderSupabaseStatus();
+  notify('Supabase connected!');
+}
 
-  // Build flat arrays — one per order
-  var rows = claimedOrders.map(function(o) {
-    var tip = o.confirmedTip != null ? o.confirmedTip : null;
-    var total = (o.basePay||0) + (tip||0) + (o.bonus||0);
-    return [
-      o.id || '',
-      o.ts ? new Date(o.ts).toLocaleString() : '',
-      o.store || '',
-      o.address || '',
-      o.region || '',
-      (o.basePay||0).toFixed(2),
-      (o.bonus||0).toFixed(2),
-      tip != null ? tip.toFixed(2) : 'pending',
-      tip != null ? total.toFixed(2) : 'pending',
-      o.items || 0,
-      o.estMinutes || 0,
-      o.distance || 0,
-      o.score || 0,
-      (o.batchGroup || o.batchScreenshot) ? 'yes' : 'no'
-    ];
-  });
+function renderSupabaseStatus() {
+  var el = document.getElementById('supabaseStatus');
+  var u = document.getElementById('supabaseUrlInput'), k = document.getElementById('supabaseKeyInput');
+  if (!el) return;
+  if (supabaseUrl && supabaseKey) {
+    var n = remoteTipIntel ? Object.keys(remoteTipIntel.storeIntel || {}).length : 0;
+    el.textContent = 'Connected: ' + supabaseUrl + (remoteTipIntel ? ' · ' + n + ' stores in history' : '');
+    el.style.color = 'var(--green)';
+    if (u) u.value = supabaseUrl;
+    if (k) k.value = supabaseKey;
+  } else {
+    el.textContent = 'Not connected — scores use this phone\'s history only';
+    el.style.color = 'var(--muted)';
+  }
+}
 
-  // Split into chunks of 10 to stay well under URL length limits
-  var CHUNK = 10;
-  var chunks = [];
-  for (var i = 0; i < rows.length; i += CHUNK) chunks.push(rows.slice(i, i + CHUNK));
-  var total_chunks = chunks.length;
-
+async function fetchRemoteTipIntel() {
+  if (!supabaseUrl || !supabaseKey) return null;
+  // Hard timeout: this runs before screenshot analysis, and a stalled request
+  // on bad signal must never block reading offers.
+  var ctrl = new AbortController();
+  var timedOut = false;
+  var timer = setTimeout(function(){ timedOut = true; ctrl.abort(); }, 5000);
   try {
-    for (var ci = 0; ci < chunks.length; ci++) {
-      var payload = JSON.stringify({ action: 'syncAll', rows: chunks[ci], chunk: ci, total: total_chunks });
-      // Base64 encode to safely pass JSON through a URL parameter
-      var encoded = btoa(unescape(encodeURIComponent(payload)));
-      var url = sheetsUrl + '?d=' + encoded;
-      // Use no-cors GET — Apps Script doGet handles this
-      await fetch(url, { method: 'GET', mode: 'no-cors' });
-      // Small delay between chunks
-      if (ci < chunks.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
-    }
-    if (statusEl) statusEl.textContent = 'Last synced: ' + new Date().toLocaleTimeString() + ' · ' + rows.length + ' orders';
-    if (!silent) notify('Synced ' + rows.length + ' orders to Google Sheets!');
+    var resp = await fetch(supabaseUrl + '/functions/v1/get-tip-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey },
+      body: '{}',
+      signal: ctrl.signal
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0, 120));
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    remoteTipIntel = { storeIntel: data.storeIntel || {}, regionIntel: data.regionIntel || {}, sourceOrders: data.sourceOrders || 0 };
+    return remoteTipIntel;
   } catch(e) {
-    if (statusEl) statusEl.textContent = 'Sync failed: ' + e.message;
-    if (!silent) notify('Sync failed: ' + e.message, true);
+    throw timedOut ? new Error('timed out after 5s') : e;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-
-// Auto-sync when a tip is confirmed or order is claimed
-function saveAllAndSync() {
-  saveAll();
-  if (sheetsUrl) syncToSheets(true);
-}
-
-// ════════ REGION ════════
-function extractRegion(address) {
-  if (!address) return 'Unknown';
-  var a = address.toLowerCase();
-  if (a.match(/downtown|o st|q st|p st|10th|11th|12th|13th|14th|15th|16th/)) return 'Downtown';
-  if (a.match(/south|s 27th|s 40th|s 48th|s 56th|s 70th|s 84th|pine lake|yankee hill/)) return 'South Lincoln';
-  if (a.match(/north|n 27th|n 48th|n 56th|havelock|military|cornhusker/)) return 'North Lincoln';
-  if (a.match(/east|n 84th|n 91st|gateway|84th|91st/)) return 'East Lincoln';
-  if (a.match(/west|pioneers|coddington|w o st|w a st|ridge/)) return 'West Lincoln';
-  if (a.match(/university|unl|vine|holdrege|salt creek/)) return 'University Area';
-  return 'Other';
-}
-
-// ════════ ADDRESS PARSING FOR BATCH DETECTION ════════
-// Lincoln is a near-perfect grid: N/S streets are numbered, E/W streets are lettered or named
-// We parse street numbers to estimate block distances
-function parseLincolnAddress(address) {
-  if (!address) return null;
-  var a = address.toLowerCase();
-  var result = { northSouth: null, eastWest: null };
-
-  // N/S numbered streets: "N 27th", "S 56th", "27th St"
-  var nsMatch = a.match(/([ns]\.?\s*)?(\d+)(?:th|st|nd|rd)\s*(st|street|ave|avenue|blvd)?/);
-  if (nsMatch) result.northSouth = parseInt(nsMatch[2]);
-
-  // E/W lettered streets: "O St", "A St", "Vine St", "Pine Lake"
-  var ewLetterMatch = a.match(/\b([a-w])\s*(?:st|street)\b/);
-  if (ewLetterMatch) result.eastWest = ewLetterMatch[1].charCodeAt(0) - 'a'.charCodeAt(0);
-
-  // Named cross streets mapped to approximate block numbers from downtown
-  var namedStreets = {
-    'vine':10,'holdrege':14,'leighton':17,'adams':21,'calvert':25,
-    'cornhusker':28,'military':34,'fletcher':38,'superior':45,
-    'pioneers':3,'south':6,'pine lake':55,'yankee hill':62,
-    'old cheney':48,'highway 2':40,'nebraska':5,'capitol':2,'k st':10,'p st':15,'q st':16
-  };
-  Object.keys(namedStreets).forEach(function(name) {
-    if (a.includes(name)) result.eastWest = namedStreets[name];
-  });
-
-  return result;
-}
-
-function estimateBlockDistance(addr1, addr2) {
-  // Returns estimated distance in blocks (1 block ≈ 0.1 mi in Lincoln)
-  var p1 = parseLincolnAddress(addr1);
-  var p2 = parseLincolnAddress(addr2);
-  if (!p1 || !p2) return 999;
-
-  var nsDiff = 999, ewDiff = 999;
-  if (p1.northSouth !== null && p2.northSouth !== null) nsDiff = Math.abs(p1.northSouth - p2.northSouth);
-  if (p1.eastWest !== null && p2.eastWest !== null) ewDiff = Math.abs(p1.eastWest - p2.eastWest);
-
-  // If we only have one axis for both, use that
-  if (nsDiff === 999 && ewDiff !== 999) return ewDiff;
-  if (ewDiff === 999 && nsDiff !== 999) return nsDiff;
-  if (nsDiff === 999 && ewDiff === 999) return 999;
-
-  // Manhattan distance in blocks
-  return nsDiff + ewDiff;
-}
-
-function blocksToMiles(blocks) { return (blocks * 0.1).toFixed(1); }
-function blocksToMinutes(blocks) {
-  // ~2 min per mile driving in suburbs, blocks = 0.1mi each
-  return Math.round(blocks * 0.1 * 2);
-}
-
-// ════════ BATCH DETECTION ════════
-function findBatches(orders) {
-  var CLOSE_BLOCKS = 20; // ~2 miles = "close" for a batch
-  var batches = [];
-  var used = new Set();
-
-  for (var i = 0; i < orders.length; i++) {
-    if (used.has(i)) continue;
-    var group = [i];
-    for (var j = i + 1; j < orders.length; j++) {
-      if (used.has(j)) continue;
-      if (!orders[i].address || !orders[j].address) continue;
-      var blocks = estimateBlockDistance(orders[i].address, orders[j].address);
-      if (blocks <= CLOSE_BLOCKS) {
-        group.push(j);
-      }
-    }
-    if (group.length >= 2) {
-      // Only take pairs/triples (don't over-group)
-      var pair = group.slice(0, 3);
-      pair.forEach(function(idx){ used.add(idx); });
-      batches.push(pair);
-    }
+// Never blocks analysis: without history the app just scores on local data.
+async function refreshRemoteTipIntel(silent) {
+  if (!supabaseUrl || !supabaseKey) return;
+  try {
+    await fetchRemoteTipIntel();
+    renderSupabaseStatus();
+  } catch(e) {
+    if (!silent) notify('Tip history unavailable: ' + e.message, true);
   }
-  return batches;
 }
 
-function batchScoreBoost(blocks) {
-  // Closer = bigger boost. Under 5 blocks = +20, under 10 = +15, under 20 = +10
-  if (blocks <= 5)  return 20;
-  if (blocks <= 10) return 15;
-  if (blocks <= 20) return 10;
-  return 0;
+async function testSupabase() {
+  if (!supabaseUrl || !supabaseKey) { notify('Save your project URL and anon key first', true); return; }
+  var el = document.getElementById('supabaseStatus');
+  if (el) { el.textContent = 'Testing...'; el.style.color = 'var(--muted)'; }
+  try {
+    var d = await fetchRemoteTipIntel();
+    renderSupabaseStatus();
+    notify('Tip history works — ' + d.sourceOrders + ' tipped orders, ' + Object.keys(d.storeIntel).length + ' stores.');
+  } catch(e) {
+    if (el) { el.textContent = 'Failed: ' + e.message; el.style.color = 'var(--red)'; }
+    notify('Supabase test failed', true);
+  }
 }
 
-// ════════ API KEY ════════
-function saveApiKey() {
-  var v = document.getElementById('apiKeyInput').value.trim();
-  if (!v) { notify('Paste your API key first', true); return; }
-  apiKey = v; localStorage.setItem('soa_key', apiKey);
-  renderKeyStatus(); renderKeyBanner(); notify('API key saved!');
-}
 function renderKeyStatus() {
   var msg = document.getElementById('keyStatusMsg'), dot = document.getElementById('keyDot'), inp = document.getElementById('apiKeyInput');
   if (!msg) return;
@@ -677,7 +800,7 @@ function renderKeyStatus() {
 }
 function renderKeyBanner() {
   var wrap = document.getElementById('keyBannerWrap'); if (!wrap) return;
-  if (apiKey) { wrap.innerHTML = '<div class="key-ok-banner"><div class="key-ok-text">API key active</div><button class="key-change-btn" onclick="goTab(\'settings\',document.querySelectorAll(\'.tab\')[4])">Change</button></div>'; }
+  if (apiKey) { wrap.innerHTML = '<div class="key-ok-banner"><div class="key-ok-text">API key active</div><button class="key-change-btn" onclick="goTab(\'settings\',document.querySelectorAll(\'.tab\')[5])">Change</button></div>'; }
   else { wrap.innerHTML = '<div class="key-banner"><div class="key-banner-title">API key needed to read screenshots</div><div class="key-banner-sub">Free key at console.anthropic.com</div><div class="key-input-row"><input class="key-input" type="password" id="quickKey" placeholder="sk-ant-api03-..." autocomplete="off"><button class="key-save-btn" onclick="quickSaveKey()">Save</button></div></div>'; }
 }
 function quickSaveKey() {
@@ -687,21 +810,26 @@ function quickSaveKey() {
 }
 async function testKey() {
   if (!apiKey) { notify('Save your API key first', true); return; }
-  var db = document.getElementById('debugBox'); db.style.display = 'block'; db.textContent = 'Connecting...'; db.style.color = '#5edb97';
+  var db = document.getElementById('debugBox'); db.style.display = 'block'; db.textContent = 'Connecting...'; db.style.color = 'var(--green)';
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}, body: JSON.stringify({model:'claude-haiku-4-5',max_tokens:10,messages:[{role:'user',content:'Hi'}]}) });
-    var text = await resp.text(); db.textContent = 'HTTP ' + resp.status + '\n\n' + text.slice(0,400);
-    if (resp.ok) notify('Connection works!'); else { notify('API error - see debug box', true); db.style.color = '#f87171'; }
-  } catch(e) { db.textContent = 'Error: ' + e.message; db.style.color = '#f87171'; notify('Failed: ' + e.message, true); }
+    var text = await resp.text(); db.textContent = 'HTTP ' + resp.status + '\\n\\n' + text.slice(0,400);
+    if (resp.ok) notify('Connection works!'); else { notify('API error - see debug box', true); db.style.color = 'var(--red)'; }
+  } catch(e) { db.textContent = 'Error: ' + e.message; db.style.color = 'var(--red)'; notify('Failed: ' + e.message, true); }
+}
+function saveApiKey() {
+  var v = document.getElementById('apiKeyInput').value.trim();
+  if (!v) { notify('Paste your API key first', true); return; }
+  apiKey = v; localStorage.setItem('soa_key', apiKey);
+  renderKeyStatus(); renderKeyBanner(); notify('API key saved!');
 }
 
-// ════════ SETTINGS ════════
 function applySettings() {
   document.getElementById('sPay').value = settings.minPay;
   document.getElementById('sItems').value = settings.maxItems;
   document.getElementById('sMiles').value = settings.maxMiles;
   document.getElementById('sRate').value = settings.targetRate;
-  document.getElementById('sTipWeight').value = settings.tipWeight != null ? settings.tipWeight : 2;
+  document.getElementById('sTipWeight').value = settings.tipWeight != null ? settings.tipWeight : 2; 
 }
 function saveSettings() {
   settings = { minPay:parseFloat(document.getElementById('sPay').value)||10, maxItems:parseInt(document.getElementById('sItems').value)||50, maxMiles:parseFloat(document.getElementById('sMiles').value)||8, targetRate:parseFloat(document.getElementById('sRate').value)||18, tipWeight:parseFloat(document.getElementById('sTipWeight').value)||2 };
@@ -709,50 +837,162 @@ function saveSettings() {
   if (currentResults.length) renderResults();
 }
 
-// ════════ TIP INTELLIGENCE ════════
-function buildTipIntelligence() {
-  var storeMap = {}, regionMap = {};
-  claimedOrders.forEach(function(o) {
-    var tip = o.confirmedTip != null ? o.confirmedTip : (o.tip || 0);
-    var total = (o.basePay||0) + tip + (o.bonus||0);
-    if (o.store) { if (!storeMap[o.store]) storeMap[o.store] = {tips:[],count:0}; storeMap[o.store].tips.push(tip); storeMap[o.store].count++; }
-    var region = o.region || extractRegion(o.address||'');
-    if (!regionMap[region]) regionMap[region] = {tips:[],totals:[]};
-    regionMap[region].tips.push(tip); regionMap[region].totals.push(total);
-  });
-  var storeIntel = {}, regionIntel = {};
-  Object.keys(storeMap).forEach(function(s) { var d=storeMap[s]; storeIntel[s] = {avgTip:d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length, count:d.count}; });
-  Object.keys(regionMap).forEach(function(r) { var d=regionMap[r]; var avgTip=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length; var avgTotal=d.totals.reduce(function(a,b){return a+b;},0)/d.totals.length; regionIntel[r]={avgTip:avgTip,avgRate:avgTotal>0?avgTip/avgTotal:0,count:d.tips.length}; });
-  return {storeIntel:storeIntel,regionIntel:regionIntel};
-}
-function tipIntelBonus(o, intel) {
-  var weight = settings.tipWeight != null ? settings.tipWeight : 2; if (weight===0) return 0;
-  var bonus = 0, store = o.store||'', region = o.region||extractRegion(o.address||'');
-  if (intel.storeIntel[store] && intel.storeIntel[store].count >= 2) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
-  if (intel.regionIntel[region] && intel.regionIntel[region].count >= 2) bonus += intel.regionIntel[region].avgRate*10*weight;
-  return Math.min(15, Math.round(bonus));
-}
-function tipPotentialLabel(o, intel) {
-  var store=o.store||'', region=o.region||extractRegion(o.address||'');
-  var si=intel.storeIntel[store], ri=intel.regionIntel[region];
-  var src=(si&&si.count>=2)?si:((ri&&ri.count>=2)?ri:null);
-  if (!src) return null;
-  var avg=src.avgTip||0;
-  if (avg>=5) return {label:'High tip area',cls:'high',avg:avg};
-  if (avg>=2) return {label:'Decent tips',cls:'med',avg:avg};
-  return {label:'Low tip area',cls:'low',avg:avg};
+function goTab(id, btn) {
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('sec-' + id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  if (id === 'results') renderResults();
+  if (id === 'stats') renderStats();
+  if (id === 'tips') renderPendingTips();
+  if (id === 'settings') { updateStorageInfo(); renderSheetStatus(); renderSupabaseStatus(); }
+  if (id === 'active') renderActiveOrders();
 }
 
-// ════════ FILE HANDLING ════════
-var dz = document.getElementById('dz');
-dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag'); });
-dz.addEventListener('dragleave', function(){ dz.classList.remove('drag'); });
-dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag'); addFiles(e.dataTransfer.files); });
+var orderIntervals = {}; // Global object to store setInterval IDs for each order
+
+function renderActiveOrders() {
+  const activeOrdersList = document.getElementById('activeOrdersList');
+  activeOrdersList.innerHTML = '';
+
+  const active = pendingTipOrders.filter(o => o.status === 'queued' || o.status === 'running');
+
+  if (active.length === 0) {
+    activeOrdersList.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;text-align:center;">No active orders yet. Claim orders from the Results tab.</div>';
+    return;
+  }
+
+  activeOrdersList.innerHTML = active.map(order => {
+    const isRunning = order.status === 'running';
+    const elapsedTime = isRunning ? formatDuration((Date.now() - order.runStartTime) / 1000) : 'Ready';
+    const rowClass = isRunning ? 's-reading' : 's-queued';
+
+    return `
+      <div class="proc-row ${rowClass}" id="active-order-${order.id}">
+        <div class="proc-info">
+          <div class="proc-name">${order.store} - Order ${order.id.slice(-5)}</div>
+          <div class="proc-stat">
+            ${isRunning ? `Running for: <span id="timer-${order.id}">${elapsedTime}</span>` : `Claimed at: ${new Date(order.claimedTime).toLocaleTimeString()}`}
+          </div>
+        </div>
+        <div class="proc-actions" style="display:flex;gap:6px;">
+          ${!isRunning ? `<button class="btn-sm filled" onclick="startOrderRun('${order.id}')">Start Run</button>` : ''}
+          ${isRunning ? `<button class="btn-sm r" onclick="stopOrderRun('${order.id}')">Stop Run</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Ensure all running timers are active and update their display
+  active.filter(o => o.status === 'running').forEach(order => {
+    if (!orderIntervals[order.id]) {
+      orderIntervals[order.id] = setInterval(() => updateOrderTimerDisplay(order.id), 1000);
+    }
+  });
+}
+
+function formatDuration(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
+function updateOrderTimerDisplay(orderId) {
+  const order = pendingTipOrders.find(o => o.id === orderId);
+  if (order && order.status === 'running' && order.runStartTime) {
+    const elapsedSeconds = (Date.now() - order.runStartTime) / 1000;
+    const timerElement = document.getElementById(`timer-${order.id}`);
+    if (timerElement) {
+      timerElement.textContent = formatDuration(elapsedSeconds);
+    }
+  }
+}
+
+function startOrderRun(orderId) {
+  const order = pendingTipOrders.find(o => o.id === orderId);
+  if (!order) {
+    notify('Order not found!', true);
+    return;
+  }
+  if (order.status === 'running') {
+    notify('This order is already running!', true);
+    return;
+  }
+
+  order.status = 'running';
+  order.runStartTime = Date.now();
+  order.runEndTime = null; // Clear previous end time if any
+  order.runDurationMinutes = null; // Clear previous duration if any
+
+  // Start the individual timer
+  if (orderIntervals[order.id]) clearInterval(orderIntervals[order.id]); // Clear any old interval
+  orderIntervals[order.id] = setInterval(() => updateOrderTimerDisplay(order.id), 1000);
+
+  saveAllAndSync();
+  renderActiveOrders(); // Re-render to update buttons and start timer display
+  notify(`Run started for ${order.store} - Order ${order.id.slice(-5)}!`);
+}
+
+function stopOrderRun(orderId) {
+  const order = pendingTipOrders.find(o => o.id === orderId);
+  if (!order) {
+    notify('Order not found!', true);
+    return;
+  }
+  if (order.status !== 'running') {
+    notify('This order is not currently running.', true);
+    return;
+  }
+
+  // Stop the individual timer
+  if (orderIntervals[order.id]) {
+    clearInterval(orderIntervals[order.id]);
+    delete orderIntervals[order.id];
+  }
+
+  order.runEndTime = Date.now();
+  order.runDurationMinutes = (order.runEndTime - order.runStartTime) / (1000 * 60);
+  order.status = 'completed'; // Mark as completed so renderActiveOrders filters it out
+
+  // Add the completed order to completedRuns (as a single-order run)
+  completedRuns.unshift({
+    startTime: order.runStartTime,
+    endTime: order.runEndTime,
+    orders: [{ ...order }] // Make a copy of the order, so we don't modify it later if pendingTipOrders changes
+  });
+
+  saveAllAndSync();
+  renderActiveOrders();   // Remove from active view
+  renderPendingTips();
+  renderStats();
+  notify(`Run for ${order.store} - Order ${order.id.slice(-5)} completed! Duration: ${order.runDurationMinutes.toFixed(1)} mins.`);
+}
+
+function renderBadge() { 
+  var claimedCount = pendingTipOrders.length;
+  document.getElementById('claimedBadge').textContent = claimedCount + ' claimed';
+  if (claimedCount > 0) {
+    document.getElementById('claimedBadge').classList.add('on');
+  } else {
+    document.getElementById('claimedBadge').classList.remove('on');
+  }
+}
+
+function updateStorageInfo() {
+  var el = document.getElementById('storageInfo'); if (!el) return;
+  var total = 0; try { for (var k in localStorage) { if (localStorage.hasOwnProperty(k)) total += ((localStorage[k]||'').length * 2); } } catch(e) {}
+  var kb = Math.round(total / 1024);
+  var pct = Math.min(100, Math.round(kb / 5120 * 100));
+  var color = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--amber)' : 'var(--green)';
+  el.innerHTML = 'Storage used: <strong style="color:'+color+';">'+kb+'KB / 5120KB ('+pct+'%)</strong><br><span style="color:var(--muted);">'+pendingTipOrders.length+' orders saved · screenshots not stored (session only)</span>';
+}
+
 function addFiles(files) {
   if (!files||!files.length) return;
   Array.from(files).forEach(function(f){ queue.push({id:'q'+Date.now()+Math.random().toString(36).slice(2,5),file:f,url:URL.createObjectURL(f),b64:null,mime:f.type||'image/jpeg',status:'queued',data:null}); });
   renderQueue(); notify(files.length+' screenshot'+(files.length>1?'s':'')+' added');
 }
+
 function renderQueue() {
   var qs=document.getElementById('queueSection'); if (!queue.length){qs.style.display='none';return;} qs.style.display='block';
   var done=queue.filter(function(q){return q.status==='done';}).length;
@@ -763,17 +1003,23 @@ function renderQueue() {
   var btn=document.getElementById('analyzeBtn'); btn.disabled=analyzing;
   btn.textContent=analyzing?'Reading screenshots...':(done===queue.length&&done>0?'View results':'Read all screenshots');
 }
-function removeQ(id){queue=queue.filter(function(q){return q.id!==id;});renderQueue();}
+function removeQ(id){queue=queue.filter(function(q){return q.id!==id;});renderQueue();showHideQueueSection(); }
 function clearQueue(){queue=[];document.getElementById('queueSection').style.display='none';}
-function fileToB64(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});}
+function showHideQueueSection() {
+  if (queue.length > 0) {
+    document.getElementById('queueSection').style.display = 'block';
+  } else {
+    document.getElementById('queueSection').style.display = 'none';
+  }
+}
 
-// ════════ ANALYZE ════════
 async function analyzeAll() {
   if (!apiKey){notify('Add your API key first',true);return;}
   var alreadyDone=queue.filter(function(q){return q.status==='done';}).length;
   if (alreadyDone===queue.length&&alreadyDone>0){buildResults();return;}
   analyzing=true; document.getElementById('progWrap').style.display='block'; renderQueue();
   var toRead=queue.filter(function(q){return q.status!=='done';}), completed=0;
+  await refreshRemoteTipIntel(true);
   var intel=buildTipIntelligence();
   for (var i=0;i<toRead.length;i++) {
     var item=toRead[i]; item.status='reading'; renderQueue();
@@ -781,7 +1027,6 @@ async function analyzeAll() {
       if (!item.b64) item.b64=await fileToB64(item.file);
       var data=await readOneScreenshot(item.b64,item.mime);
 
-      // Batch screenshot detected — split into 2 separate queue items
       if (data._isBatch && data._orders) {
         data._orders.forEach(function(subOrder,si){
           subOrder.imgB64=item.b64; subOrder.imgMime=item.mime;
@@ -790,7 +1035,6 @@ async function analyzeAll() {
           subOrder.batchBonus=0;
           subOrder.score=scoreOrder(subOrder,subOrder.tipBonus,0);
           subOrder.ts=Date.now()+completed+(si*0.1); subOrder.claimed=false;
-          // Push as extra items into queue with done status
           queue.push({id:'q'+Date.now()+'b'+si,file:item.file,url:item.url,b64:item.b64,mime:item.mime,status:'done',data:subOrder});
         });
         item.status='done'; item.data={pay:0,store:'(split into '+data._orders.length+' batch orders)',address:'',items:0,estMinutes:0,distance:0,basePay:0,tip:0,bonus:0,_placeholder:true};
@@ -807,7 +1051,10 @@ async function analyzeAll() {
     } catch(e){ item.status='error'; console.error(e.message); }
     completed++;
     document.getElementById('progFill').style.width=Math.round((completed/toRead.length)*100)+'%';
-    document.getElementById('progLbl').textContent='Read '+completed+' of '+toRead.length;
+    var progLbl = document.getElementById('progLbl');
+    if (progLbl) {
+      progLbl.textContent = 'Read ' + completed + ' of ' + toRead.length;
+    }
     renderQueue();
   }
   analyzing=false; renderQueue();
@@ -816,8 +1063,8 @@ async function analyzeAll() {
 }
 
 async function readOneScreenshot(b64,mime) {
-  // Use a larger prompt that detects single orders AND batch screenshots with 2 orders
-  var prompt = 'This is a Shipt shopper order offer screenshot. It may show ONE order or a BATCH of 2+ orders (look for words like "Batch", "2 orders", "2 stops", multiple addresses, or multiple item counts listed).\n\nIf it is a SINGLE order, return ONLY this JSON:\n{"type":"single","pay":0,"basePay":0,"tip":0,"bonus":0,"items":0,"estMinutes":0,"distance":0,"store":"","address":""}\n\nIf it is a BATCH order showing 2 orders, return ONLY this JSON:\n{"type":"batch","totalPay":0,"orders":[{"store":"","address":"","items":0,"pay":0},{"store":"","address":"","items":0,"pay":0}],"bonus":0,"estMinutes":0,"distance":0}\n\nRules:\n- type = "single" or "batch"\n- For single: pay=total, basePay=base only, tip=tip if visible(0 if hidden), bonus=any bonus, items=count, estMinutes=minutes(midpoint if range), distance=miles, store=name, address=full address\n- For batch: totalPay=combined pay shown, each order gets its own store/address/items/pay if shown separately, bonus=any bonus, estMinutes=total time, distance=total miles\n- Return ONLY the JSON object. No markdown, no explanation.';
+
+  var prompt = 'This is a Shipt shopper order offer screenshot. It may show ONE order or a BATCH of 2+ orders (look for words like "Batch", "2 orders", "2 stops", multiple addresses, or multiple item counts listed).\\n\\nIf it is a SINGLE order, return ONLY this JSON:\\n{"type":"single","pay":0,"basePay":0,"tip":0,"bonus":0,"items":0,"estMinutes":0,"distance":0,"store":"","address":""}\\n\\nIf it is a BATCH order showing 2 orders, return ONLY this JSON:\\n{"type":"batch","totalPay":0,"orders":[{"store":"","address":"","items":0,"pay":0},{"store":"","address":"","items":0,"pay":0}],"bonus":0,"estMinutes":0,"distance":0}\\n\\nRules:\\n- type = "single" or "batch"\\n- For single: pay=total, basePay=base only, tip=tip if visible(0 if hidden), bonus=any bonus, items=count, estMinutes=minutes(midpoint if range), distance=miles, store=name, address=full address\\n- For batch: totalPay=combined pay shown, each order gets its own store/address/items/pay if shown separately, bonus=any bonus, estMinutes=total time, distance=total miles\\n- Return ONLY the JSON object. No markdown, no explanation.';
 
   var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:400,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mime,data:b64}},{type:'text',text:prompt}]}]})});
   var responseText=await resp.text();
@@ -828,9 +1075,8 @@ async function readOneScreenshot(b64,mime) {
   if (!text) throw new Error('No text in response');
   var od=null; try{od=JSON.parse(text.trim());}catch(e){}
   if (!od){var m=text.match(/\{[\s\S]*\}/);if(m){try{od=JSON.parse(m[0]);}catch(e){}}}
-  if (!od){od={type:'single'};['pay','basePay','tip','bonus','items','estMinutes','distance'].forEach(function(f){var mx=text.match(new RegExp('"'+f+'"\\s*:\\s*([\\d.]+)'));od[f]=mx?parseFloat(mx[1]):0;});var sm=text.match(/"store"\s*:\s*"([^"]*)"/);od.store=sm?sm[1]:'Unknown';var am=text.match(/"address"\s*:\s*"([^"]*)"/);od.address=am?am[1]:'';}
+  if (!od){od={type:'single'};['pay','basePay','tip','bonus','items','estMinutes','distance'].forEach(function(f){var mx=text.match(new RegExp('"'+f+'"\\\\s*:\\\\s*([\\\\d.]+)'));od[f]=mx?parseFloat(mx[1]):0;});var sm=text.match(/"store"\\\\s*:\\\\s*"([^"]*)"/);od.store=sm?sm[1]:'Unknown';var am=text.match(/"address"\\\\s*:\\\\s*"([^"]*)"/);od.address=am?am[1]:'';}
 
-  // If batch screenshot detected, return an array marker so analyzeAll can split it into 2 orders
   if (od.type==='batch' && od.orders && od.orders.length>=2) {
     var totalPay=parseFloat(od.totalPay)||0;
     var splitPay=totalPay/od.orders.length;
@@ -849,69 +1095,17 @@ async function readOneScreenshot(b64,mime) {
     };
   }
 
-  // Single order
   var o={pay:parseFloat(od.pay)||0,basePay:parseFloat(od.basePay)||0,tip:parseFloat(od.tip)||0,bonus:parseFloat(od.bonus)||0,items:parseInt(od.items)||0,estMinutes:parseFloat(od.estMinutes)||30,distance:parseFloat(od.distance)||0,store:String(od.store||'Unknown'),address:String(od.address||'')};
   if (!o.pay&&(o.basePay||o.tip)) o.pay=o.basePay+o.tip+o.bonus;
   return o;
 }
 
-// ════════ SCORING ════════
-function scoreOrder(o,tipBonus,batchBonus) {
-  var s=0, ppm=o.estMinutes>0?o.pay/o.estMinutes:0, tppm=settings.targetRate/60;
-  s+=Math.min(45,(ppm/Math.max(tppm,0.001))*45);
-  if (o.pay>=settings.minPay) s+=20; else s-=20;
-  if (o.items>settings.maxItems) s-=15; else if (o.items>35) s-=5; else if (o.items>0&&o.items<=20) s+=8;
-  if (o.distance>settings.maxMiles) s-=15; else if (o.distance>5) s-=5; else if (o.distance>0&&o.distance<=3) s+=8;
-  if (o.tip>3) s+=5; if (o.bonus>0) s+=5;
-  s+=(tipBonus||0); s+=(batchBonus||0);
-  return Math.max(0,Math.min(100,Math.round(s)));
-}
-function verdict(sc){return sc>=65?'take':sc>=40?'maybe':'skip';}
-function vlabel(sc){return sc>=65?'Take it':sc>=40?'Maybe':'Skip';}
-function vcls(sc){return sc>=65?'vp-take':sc>=40?'vp-maybe':'vp-skip';}
-function scol(sc){return sc>=65?'var(--green)':sc>=40?'var(--amber)':'var(--red)';}
-function buildReason(o) {
-  var ppm=o.estMinutes>0?(o.pay/o.estMinutes).toFixed(2):'?', tppm=(settings.targetRate/60).toFixed(2), p=[];
-  if (o.pay>=settings.minPay) p.push('$'+o.pay.toFixed(2)+' meets your $'+settings.minPay+' minimum.'); else p.push('$'+o.pay.toFixed(2)+' is below your $'+settings.minPay+' minimum.');
-  if (o.estMinutes) p.push('~'+o.estMinutes+'min = $'+ppm+'/min (target $'+tppm+'/min).');
-  if (o.items>settings.maxItems) p.push(o.items+' items exceeds your limit.'); else if (o.items>0) p.push(o.items+(o.items<=20?' items - quick shop.':" items."));
-  if (o.distance>settings.maxMiles) p.push(o.distance+'mi exceeds your limit.'); else if (o.distance>0) p.push(o.distance+'mi within range.');
-  if (o.bonus>0) p.push('Includes $'+o.bonus.toFixed(2)+' bonus!');
-  return p.join(' ');
-}
-
-// ════════ CLAIM ════════
-function claimOrder(idx) {
-  var o=currentResults[idx]; if (!o||o.claimed) return;
-  o.claimed=true;
-  var c={id:'c'+Date.now(),store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg'};
-  claimedOrders.unshift(c); saveAllAndSync(); renderBadge(); renderResults();
-  notify('Claimed! Add tip in Pending Tips when it arrives.');
-}
-function claimBatch(idxArr) {
-  var names=[];
-  idxArr.forEach(function(idx){
-    var o=currentResults[idx]; if (!o||o.claimed) return;
-    o.claimed=true;
-    var c={id:'c'+Date.now()+idx,store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now()+idx,imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg',batchGroup:true};
-    claimedOrders.unshift(c); names.push(o.store);
-  });
-  saveAllAndSync(); renderBadge(); renderResults();
-  notify('Batch claimed: '+names.join(' + ')+'!');
-}
-function unclaimResult(idx){var o=currentResults[idx];if(!o)return;o.claimed=false;renderResults();notify('Unclaimed');}
-function removeClaimed(id){claimedOrders=claimedOrders.filter(function(o){return o.id!==id;});saveAll();renderBadge();renderStats();renderPendingTips();notify('Removed');}
-
-// ════════ BUILD & RENDER RESULTS ════════
 function buildResults() {
   currentResults=queue.filter(function(q){return q.data&&!q.data._placeholder;}).map(function(q){return Object.assign({},q.data);});
-  // Run batch detection and apply boost to scores
   var intel=buildTipIntelligence();
   var batches=findBatches(currentResults);
-  // Track which indices are in a batch and their boost
-  var batchMap={}; // idx -> {partnerIdxs, blocks, boost}
+  var batchMap={}; 
   batches.forEach(function(group){
-    // Find min blocks among the group
     var minBlocks=999;
     for (var a=0;a<group.length;a++){for(var b=a+1;b<group.length;b++){var bl=estimateBlockDistance(currentResults[group[a]].address,currentResults[group[b]].address);if(bl<minBlocks)minBlocks=bl;}}
     var boost=batchScoreBoost(minBlocks);
@@ -923,7 +1117,6 @@ function buildResults() {
       currentResults[idx].score=scoreOrder(currentResults[idx],currentResults[idx].tipBonus,boost);
     });
   });
-  // Re-score non-batch orders
   currentResults.forEach(function(o,idx){
     if (!batchMap[idx]){
       o.tipBonus=tipIntelBonus(o,intel);
@@ -961,7 +1154,6 @@ function renderResults() {
   var takePay=takes.reduce(function(s,o){return s+o.pay;},0);
   document.getElementById('sumBanner').innerHTML='<div class="sum-banner"><div class="sum-title">'+sorted.length+' orders analyzed</div><div class="sum-grid"><div class="sum-item"><div class="lbl">Take</div><div class="val">'+takes.length+'</div></div><div class="sum-item"><div class="lbl">Maybe</div><div class="val">'+sorted.filter(function(o){return !o.claimed&&verdict(o.score)==='maybe';}).length+'</div></div><div class="sum-item"><div class="lbl">Claimed</div><div class="val">'+sorted.filter(function(o){return o.claimed;}).length+'</div></div></div>'+(takes.length?'<div class="sum-note">Take all recommended - $'+takePay.toFixed(2)+'</div>':'')+'</div>';
 
-  // Render batch suggestions at top
   var batches=findBatches(currentResults);
   var batchHTML='';
   var shownBatches=new Set();
@@ -987,11 +1179,10 @@ function renderResults() {
   document.getElementById('orderCards').innerHTML=sorted.map(function(o){
     var idx=indexMap.get(o); var tipInfo=tipPotentialLabel(o,intel);
     var bInfo=batchMap[idx];
-    return '<div class="ocard '+(o.claimed?'claimed-style':verdict(o.score))+'"><div class="ocard-head"><div><div class="ocard-pay">$'+o.pay.toFixed(2)+'</div><div class="ocard-store">'+o.store+(o.address?' · '+o.address:'')+'</div>'+(tipInfo?'<span class="tip-badge '+tipInfo.cls+'">'+tipInfo.label+' (avg $'+tipInfo.avg.toFixed(2)+')</span>':'')+(bInfo?'<div style="font-size:10px;color:var(--teal);margin-top:3px;">🚗 Batch: +'+bInfo.boost+'pts · ~'+blocksToMiles(bInfo.blocks)+'mi to partner</div>':'')+'</div><span class="vp '+(o.claimed?'vp-claimed':vcls(o.score))+'">'+(o.claimed?'Claimed':vlabel(o.score))+'</span></div><div class="ocard-stats">'+(o.items?'<div class="ostat"><div class="ostat-k">Items</div><div class="ostat-v">'+o.items+'</div></div>':'')+(o.estMinutes?'<div class="ostat"><div class="ostat-k">Est. time</div><div class="ostat-v">~'+o.estMinutes+'min</div></div>':'')+(o.distance?'<div class="ostat"><div class="ostat-k">Drive</div><div class="ostat-v">'+o.distance+'mi</div></div>':'')+'<div class="ostat"><div class="ostat-k">$/min</div><div class="ostat-v">'+(o.estMinutes>0?'$'+(o.pay/o.estMinutes).toFixed(2):'—')+'</div></div>'+(o.tip?'<div class="ostat"><div class="ostat-k">Tip shown</div><div class="ostat-v" style="color:var(--green);">$'+o.tip.toFixed(2)+'</div></div>':'')+(o.bonus?'<div class="ostat"><div class="ostat-k">Bonus</div><div class="ostat-v" style="color:var(--green);">+$'+o.bonus.toFixed(2)+'</div></div>':'')+'</div><div class="ocard-reason">'+buildReason(o)+'</div><div class="score-row"><span class="score-lbl">Score</span><div class="score-track"><div class="score-bar" style="width:'+o.score+'%;background:'+scol(o.score)+';"></div></div><span class="score-num" style="color:'+scol(o.score)+';">'+o.score+'/100</span></div><div class="ocard-actions">'+(o.claimed?'<button class="btn-sm r" onclick="unclaimResult('+idx+')">Remove from claimed</button>':'<button class="btn-sm filled" onclick="claimOrder('+idx+')">I claimed this ✓</button>')+'</div>'+(o.imgB64?'<img class="ocard-img" src="data:'+o.imgMime+';base64,'+o.imgB64+'" alt="" loading="lazy">':'')+'</div>';
+    return '<div class="ocard '+(o.claimed?'claimed-style':verdict(o.score))+'"><div class="ocard-head"><div><div class="ocard-pay">$'+o.pay.toFixed(2)+'</div><div class="ocard-store">'+o.store+(o.address?' · '+o.address:'')+'</div>'+(tipInfo?'<span class="tip-badge '+tipInfo.cls+'">'+tipInfo.label+' (avg $'+tipInfo.avg.toFixed(2)+')</span>':'')+(bInfo?'<div style="font-size:10px;color:var(--teal);margin-top:3px;">🚗 Batch: +'+bInfo.boost+'pts · ~'+blocksToMiles(bInfo.blocks)+'mi to partner</div>':'')+'</div><span class="vp '+(o.claimed?'vp-claimed':vcls(o.score))+'">'+(o.claimed?'Claimed':vlabel(o.score))+'</span></div><div class="ocard-stats">'+(o.items?'<div class="ostat"><div class="ostat-k">Items</div><div class="ostat-v">'+o.items+'</div></div>':'')+(o.estMinutes?'<div class="ostat"><div class="ostat-k">Est. time</div><div class="ostat-v">~'+o.estMinutes+'min</div></div>':'')+(o.distance?'<div class="ostat"><div class="ostat-k">Drive</div><div class="ostat-v">'+o.distance+'mi</div></div>':'')+'<div class="ostat"><div class="ostat-k">$/min</div><div class="ostat-v">'+(o.estMinutes>0?'$'+(o.pay/o.estMinutes).toFixed(2):'—')+'</div></div>'+(o.tip?'<div class="ostat"><div class="ostat-k">Tip shown</div><div class="ostat-v" style="color:var(--green);">$'+o.tip.toFixed(2)+'</div></div>':'')+(o.bonus?'<div class="ostat"><div class="ostat-k">Bonus</div><div class="ostat-v" style="color:var(--green);">+$'+o.bonus.toFixed(2)+'</div></div>':'')+'</div><div class="ocard-reason">'+buildReason(o)+'</div><div class="score-row"><span class="score-lbl">Score</span><div class="score-track"><div class="score-bar" style="width:'+o.score+'%;background:'+scol(o.score)+';"></div></div><span class="score-num" style="color:'+scol(o.score)+';">'+o.score+'/100</span></div><div class="ocard-actions">'+(o.claimed?'<button class="btn-sm r" onclick="unclaimResult('+idx+')">Remove from claimed</button>':'<button class="btn-sm filled" onclick="claimOrderResult('+idx+')">I claimed this ✓</button>')+'</div>'+(o.imgB64?'<img class="ocard-img" src="data:'+o.imgMime+';base64,'+o.imgB64+'" alt="" loading="lazy">':'')+'</div>';
   }).join('');
 }
 
-// ════════ STATS ════════
 function setPeriod(period,btn){ currentPeriod=period; document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('on');}); if(btn) btn.classList.add('on'); renderStats(); }
 function filterByPeriod(orders,period) {
   var now=new Date(), tod=new Date(); tod.setHours(0,0,0,0);
@@ -1004,7 +1195,7 @@ function filterByPeriod(orders,period) {
   return orders;
 }
 function renderStats() {
-  var orders=filterByPeriod(claimedOrders,currentPeriod);
+  var orders=filterByPeriod(pendingTipOrders.filter(o => o.confirmedTip !== null), currentPeriod); 
   var totalBase=orders.reduce(function(s,o){return s+(o.basePay||0);},0);
   var totalTips=orders.reduce(function(s,o){return s+(o.confirmedTip!=null?o.confirmedTip:(o.tip||0));},0);
   var totalBonus=orders.reduce(function(s,o){return s+(o.bonus||0);},0);
@@ -1014,7 +1205,7 @@ function renderStats() {
   var hourly=totalMins>0?totalEarned/(totalMins/60):0;
   var avg=orders.length>0?totalEarned/orders.length:0;
   var tipRate=totalEarned>0?totalTips/totalEarned:0;
-  var pending=orders.filter(function(o){return o.confirmedTip==null;}).length;
+  var pending=pendingTipOrders.filter(function(o){return o.confirmedTip==null;}).length; 
   document.getElementById('kpiEarned').textContent='$'+totalEarned.toFixed(2);
   document.getElementById('kpiEarnedSub').textContent=pending>0?pending+' tips still pending':'all confirmed';
   document.getElementById('kpiRate').textContent=hourly>0?'$'+hourly.toFixed(2):'--';
@@ -1027,101 +1218,111 @@ function renderStats() {
   document.getElementById('kpiTipRate').textContent=(tipRate*100).toFixed(0)+'%';
   document.getElementById('kpiMiles').textContent=totalMiles.toFixed(1);
   document.getElementById('kpiDeduct').textContent='$'+(totalMiles*0.70).toFixed(2);
-  // Region stats
   var rMap={};
-  claimedOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);var region=o.region||extractRegion(o.address||'');if(region==='Unknown'||region==='Other')return;if(!rMap[region])rMap[region]={tips:[],count:0};rMap[region].tips.push(tip);rMap[region].count++;});
+  pendingTipOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);var region=o.region||extractRegion(o.address||'');if(region==='Unknown'||region==='Other')return;if(!rMap[region])rMap[region]={tips:[],count:0};rMap[region].tips.push(tip);rMap[region].count++;});
   var rArr=Object.keys(rMap).map(function(r){var d=rMap[r];var avg=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length;return{region:r,avg:avg,count:d.count};}).sort(function(a,b){return b.avg-a.avg;});
   var maxR=rArr.length>0?Math.max.apply(null,rArr.map(function(r){return r.avg;})):1;
-  document.getElementById('regionStats').innerHTML=rArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from different areas to compare regions.</div>':rArr.map(function(r){return '<div class="region-row"><div class="region-name">'+r.region+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(r.avg/Math.max(maxR,0.01)*100)+'%;"></div></div><div class="region-stats"><div class="region-avg">$'+r.avg.toFixed(2)+'</div><div class="region-count">'+r.count+' orders</div></div></div>';}).join('');
-  // Store stats
+  document.getElementById('regionStats').innerHTML=rArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from different areas to compare regions.</div>':rArr.map(function(r){return '<div class="region-row"><div class="region-name">'+r.region+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(r.avg/Math.max(maxR,0.01)*100)+'%'+';"></div></div><div class="region-stats"><div class="region-avg">$'+r.avg.toFixed(2)+'</div><div class="region-count">'+r.count+' orders</div></div></div>';}).join('');
   var sMap={};
-  claimedOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);if(!sMap[o.store])sMap[o.store]={tips:[],count:0};sMap[o.store].tips.push(tip);sMap[o.store].count++;});
+  pendingTipOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);if(!sMap[o.store])sMap[o.store]={tips:[],count:0};sMap[o.store].tips.push(tip);sMap[o.store].count++;});
   var sArr=Object.keys(sMap).map(function(s){var d=sMap[s];var avg=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length;return{store:s,avg:avg,count:d.count};}).sort(function(a,b){return b.avg-a.avg;});
   var maxS=sArr.length>0?Math.max.apply(null,sArr.map(function(s){return s.avg;})):1;
-  document.getElementById('storeStats').innerHTML=sArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from multiple stores to compare.</div>':sArr.map(function(s){return '<div class="region-row"><div class="region-name">'+s.store+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(s.avg/Math.max(maxS,0.01)*100)+'%;"></div></div><div class="region-stats"><div class="region-avg">$'+s.avg.toFixed(2)+' avg</div><div class="region-count">'+s.count+' orders</div></div></div>';}).join('');
-  // Claimed list
-  var cl=document.getElementById('claimedList');
-  if (!claimedOrders.length){cl.innerHTML='<div style="font-size:12px;color:var(--muted);">No claimed orders yet.</div>';return;}
-  cl.innerHTML=claimedOrders.slice(0,30).map(function(o){
-    var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);
-    var total=(o.basePay||0)+tip+(o.bonus||0);
-    return '<div class="cl-item"><div><div style="font-size:13px;font-weight:500;">'+o.store+(o.batchGroup?' <span style="font-size:10px;color:var(--teal);">[batch]</span>':'')+'</div><div style="font-size:11px;color:var(--muted);">'+(o.items?o.items+' items · ':'')+new Date(o.ts).toLocaleDateString()+(o.confirmedTip==null?' · <span style="color:var(--amber);">tip pending</span>':'')+'</div></div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:15px;font-weight:500;color:var(--green);">$'+total.toFixed(2)+'</div><button class="btn-sm r" onclick="removeClaimed(\''+o.id+'\')">X</button></div></div>';
+  document.getElementById('storeStats').innerHTML=sArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from multiple stores to compare.</div>':sArr.map(function(s){return '<div class="region-row"><div class="region-name">'+s.store+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(s.avg/Math.max(maxS,0.01)*100)+'%'+';"></div></div><div class="region-stats"><div class="region-avg">$'+s.avg.toFixed(2)+' avg</div><div class="region-count">'+s.count+' orders</div></div></div>';}).join('');
+  var cl=document.getElementById('statsList'); 
+  if (!completedRuns.length){cl.innerHTML='<div style="font-size:12px;color:var(--muted);">No completed runs yet.</div>';return;} 
+  cl.innerHTML=completedRuns.slice(0,30).map(function(run){ 
+    var totalRunPay = run.orders.reduce((sum, order) => sum + (order.basePay || order.pay) + (order.tip || 0) + (order.bonus || 0), 0);
+    const durationMs = run.orders[0].runEndTime - run.orders[0].runStartTime;
+    const durationMinutes = (durationMs / (1000 * 60)).toFixed(1);
+    return '<div class="cl-item"><div><div style="font-size:13px;font-weight:500;">Run started '+ new Date(run.startTime).toLocaleDateString() +'</div><div style="font-size:11px;color:var(--muted);">'+ run.orders.length +' orders · '+ durationMinutes +' mins</div></div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:15px;font-weight:500;color:var(--green);"> $'+ totalRunPay.toFixed(2) +'</div></div></div>';
   }).join('');
 }
 
-// ════════ PENDING TIPS ════════
 function buildOrderCard(o, num, isPending) {
-  var claimTime = new Date(o.ts);
-  var timeStr = claimTime.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' + claimTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-  var totalBase = (o.basePay||0) + (o.bonus||0);
-  var batchTag = (o.batchGroup||o.batchScreenshot) ? ' <span style="font-size:10px;color:var(--teal);">[batch]</span>' : '';
-  var numBadge = num != null ? '<div class="pt-num">'+num+'</div>' : '';
+  const claimTime = new Date(o.claimedTime); 
+  const timeStr = claimTime.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' + claimTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const cardTotal = (o.basePay||0) + (o.bonus||0) + (o.confirmedTip||0);
+  const batchTag = (o.batchGroup||o.batchScreenshot) ? ' <span style="font-size:10px;color:var(--teal);">[batch]</span>' : '';
+  const numBadge = num != null ? `<div class="pt-num">${num}</div>` : '';
 
-  // Details panel (read-only view)
-  var detailsPanel = '<div class="pt-details" id="ptd-'+o.id+'">'
-    + '<div class="pt-details-row"><span class="pt-details-key">Store</span><span class="pt-details-val">'+o.store+'</span></div>'
-    + '<div class="pt-details-row"><span class="pt-details-key">Address</span><span class="pt-details-val">'+(o.address||'Not recorded')+'</span></div>'
-    + '<div class="pt-details-row"><span class="pt-details-key">Region</span><span class="pt-details-val">'+(o.region||extractRegion(o.address||''))+'</span></div>'
-    + '<div class="pt-details-row"><span class="pt-details-key">Claimed at</span><span class="pt-details-val">'+timeStr+'</span></div>'
-    + '<div class="pt-details-row"><span class="pt-details-key">Base pay</span><span class="pt-details-val">$'+(o.basePay||0).toFixed(2)+'</span></div>'
-    + (o.bonus ? '<div class="pt-details-row"><span class="pt-details-key">Bonus</span><span class="pt-details-val">$'+o.bonus.toFixed(2)+'</span></div>' : '')
-    + '<div class="pt-details-row"><span class="pt-details-key">Items</span><span class="pt-details-val">'+(o.items||'?')+'</span></div>'
-    + '<div class="pt-details-row"><span class="pt-details-key">Est. time</span><span class="pt-details-val">'+(o.estMinutes?'~'+o.estMinutes+'min':'?')+'</span></div>'
-    + '<div class="pt-details-row"><span class="pt-details-key">Distance</span><span class="pt-details-val">'+(o.distance?o.distance+'mi':'?')+'</span></div>'
-    + (!isPending && o.confirmedTip != null ? '<div class="pt-details-row"><span class="pt-details-key">Confirmed tip</span><span class="pt-details-val" style="color:var(--amber);">$'+o.confirmedTip.toFixed(2)+'</span></div>' : '')
-    + (o.imgB64 ? '<img src="data:'+o.imgMime+';base64,'+o.imgB64+'" alt="Order screenshot" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--rs);margin-top:8px;border:1px solid var(--border);">' : '')
-    + '</div>';
+  const detailsPanel = `
+    <div class="pt-details" id="ptd-${o.id}">
+      <div class="pt-details-row"><span class="pt-details-key">Store</span><span class="pt-details-val">${o.store}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Address</span><span class="pt-details-val">${(o.address||'Not recorded')}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Region</span><span class="pt-details-val">${(o.region||extractRegion(o.address||''))}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Claimed at</span><span class="pt-details-val">${timeStr}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Base pay</span><span class="pt-details-val">$${(o.basePay||0).toFixed(2)}</span></div>
+      ${o.bonus ? `<div class="pt-details-row"><span class="pt-details-key">Bonus</span><span class="pt-details-val">$${o.bonus.toFixed(2)}</span></div>` : ''}
+      <div class="pt-details-row"><span class="pt-details-key">Items</span><span class="pt-details-val">${(o.items||'?')}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Est. time</span><span class="pt-details-val">${(o.estMinutes?`~${o.estMinutes}min`:'?')}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Distance</span><span class="pt-details-val">${(o.distance?o.distance+'mi':'?')}</span></div>
+      ${!isPending && o.confirmedTip != null ? `<div class="pt-details-row"><span class="pt-details-key">Confirmed tip</span><span class="pt-details-val" style="color:var(--amber);"> $${o.confirmedTip.toFixed(2)}</span></div>` : ''}
+      ${o.imgB64 ? `<img src="data:${o.imgMime};base64,${o.imgB64}" alt="Order screenshot" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--rs);margin-top:8px;border:1px solid var(--border);">` : ''}
+    </div>
+  `;
 
-  // Edit panel
-  var editPanel = '<div class="pt-details" id="pte-'+o.id+'" style="background:var(--blue-light);border:1px solid #bfdbfe;">'
-    + '<div style="font-size:11px;font-weight:500;color:var(--blue);margin-bottom:10px;">Edit order details — changes save immediately</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;">'
-    + editField('Store', 'text', 'pte-store-'+o.id, o.store||'')
-    + editField('Address', 'text', 'pte-addr-'+o.id, o.address||'')
-    + editField('Base pay ($)', 'number', 'pte-base-'+o.id, o.basePay||0)
-    + editField('Bonus ($)', 'number', 'pte-bonus-'+o.id, o.bonus||0)
-    + editField('Items', 'number', 'pte-items-'+o.id, o.items||0)
-    + editField('Est. time (min)', 'number', 'pte-mins-'+o.id, o.estMinutes||0)
-    + editField('Distance (mi)', 'number', 'pte-dist-'+o.id, o.distance||0)
-    + '</div>'
-    + '<button class="pt-save-btn" onclick="saveOrderEdits(\''+o.id+'\')" style="width:100%;margin-top:10px;padding:10px;">Save changes</button>'
-    + '</div>';
+  const editPanel = `
+    <div class="pt-details" id="pte-${o.id}" style="background:var(--blue-light);border:1px solid #bfdbfe;">
+      <div style="font-size:11px;font-weight:500;color:var(--blue);margin-bottom:10px;">Edit order details — changes save immediately</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${editField('Store', 'text', `pte-store-${o.id}`, o.store||'')}
+        ${editField('Address', 'text', `pte-addr-${o.id}`, o.address||'')}
+        ${editField('Base pay ($)', 'number', `pte-base-${o.id}`, o.basePay||0)}
+        ${editField('Bonus ($)', 'number', `pte-bonus-${o.id}`, o.bonus||0)}
+        ${editField('Items', 'number', `pte-items-${o.id}`, o.items||0)}
+        ${editField('Est. time (min)', 'number', `pte-mins-${o.id}`, o.estMinutes||0)}
+        ${editField('Distance (mi)', 'number', `pte-dist-${o.id}`, o.distance||0)}
+      </div>
+      <button class="pt-save-btn" onclick="saveOrderEdits('${o.id}')" style="width:100%;margin-top:10px;padding:10px;">Save changes</button>
+    </div>
+  `;
 
-  var header = '<div class="pt-header">'
-    + numBadge
-    + '<div class="pt-main"><div class="pt-store">'+o.store+batchTag+'</div><div class="pt-meta">'+(o.address||o.region||'No address')+'</div></div>'
-    + '<div class="pt-pay">$'+totalBase.toFixed(2)+'</div>'
-    + '</div>';
+  const header = `
+    <div class="pt-header">
+      ${numBadge}
+      <div class="pt-main"><div class="pt-store">${o.store}${batchTag}</div><div class="pt-meta">${(o.address||o.region||'No address')}</div></div>
+      <div class="pt-pay">$${cardTotal.toFixed(2)}</div>
+    </div>
+  `;
 
-  var toggleBtns = '<div style="display:flex;gap:8px;margin:6px 0 4px;">'
-    + '<button class="pt-toggle" onclick="togglePanel(\'ptd-'+o.id+'\',this)" style="flex:1;">More details ▾</button>'
-    + '<button class="pt-toggle" onclick="togglePanel(\'pte-'+o.id+'\',this)" style="flex:1;color:var(--blue);">Edit order ✏️</button>'
-    + '</div>';
+  const toggleBtns = `
+    <div style="display:flex;gap:8px;margin:6px 0 4px;">
+      <button class="pt-toggle" onclick="togglePanel('ptd-${o.id}',this)" style="flex:1;">More details ▾</button>
+      <button class="pt-toggle" onclick="togglePanel('pte-${o.id}',this)" style="flex:1;color:var(--blue);">Edit order ✏️</button>
+    </div>
+  `;
 
-  var actionBtns = '';
+  let actionBtns = '';
   if (isPending) {
-    actionBtns = '<div class="pt-input-row"><input class="pt-input" type="number" id="ptip-'+o.id+'" placeholder="Tip amount..." step="0.01" min="0" inputmode="decimal"><button class="pt-save-btn" onclick="confirmTip(\''+o.id+'\')">Save tip</button></div>'
-      + '<button class="btn-sm r" onclick="unclaimFromTips(\''+o.id+'\')" style="width:100%;text-align:center;margin-top:6px;">Remove this order entirely</button>';
+    actionBtns = `
+      <div class="pt-input-row"><input class="pt-input" type="number" id="ptip-${o.id}" placeholder="Tip amount..." step="0.01" min="0" inputmode="decimal"><button class="pt-save-btn" onclick="confirmTip('${o.id}')">Save tip</button></div>
+      <button class="btn-sm r" onclick="unclaimFromTips('${o.id}')" style="width:100%;text-align:center;margin-top:6px;">Remove this order entirely</button>
+    `;
   } else {
-    actionBtns = '<div style="display:flex;gap:6px;margin-top:4px;">'
-      + '<button class="btn-sm r" onclick="unconfirmTip(\''+o.id+'\')" style="flex:1;text-align:center;">Undo tip</button>'
-      + '<button class="btn-sm r" onclick="unclaimFromTips(\''+o.id+'\')" style="flex:1;text-align:center;">Remove order</button>'
-      + '</div>';
+    actionBtns = `
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button class="btn-sm r" onclick="unconfirmTip('${o.id}')" style="flex:1;text-align:center;">Undo tip</button>
+        <button class="btn-sm r" onclick="unclaimFromTips('${o.id}')" style="flex:1;text-align:center;">Remove order</button>
+      </div>
+    `;
   }
 
-  return '<div class="pt-item">'+header+toggleBtns+detailsPanel+editPanel+actionBtns+'</div>';
+  return `<div class="pt-item">${header}${toggleBtns}${detailsPanel}${editPanel}${actionBtns}</div>`;
 }
 
 function editField(label, type, id, val) {
-  return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
-    + '<label style="font-size:11px;color:var(--blue);white-space:nowrap;">'+label+'</label>'
-    + '<input type="'+type+'" id="'+id+'" value="'+val+'" step="'+(type==='number'?'0.01':'')
-    +'" style="width:130px;padding:6px 8px;font-size:13px;border:1px solid #bfdbfe;border-radius:var(--rs);background:#fff;color:var(--text);font-family:var(--fm);text-align:right;">'
-    + '</div>';
+  const stepAttribute = type === 'number' ? 'step="0.01"' : '';
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <label style="font-size:11px;color:var(--blue);white-space:nowrap;">${label}</label>
+      <input type="${type}" id="${id}" value="${val}" ${stepAttribute}
+             style="width:130px;padding:6px 8px;font-size:13px;border:1px solid #bfdbfe;border-radius:var(--rs);background:#fff;color:var(--text);font-family:var(--fm);text-align:right;">
+    </div>
+  `;
 }
 
 function saveOrderEdits(id) {
-  var order = claimedOrders.find(function(o){ return o.id===id; });
+  var order = pendingTipOrders.find(function(o){ return o.id===id; }); 
   if (!order) return;
   var storeEl = document.getElementById('pte-store-'+id);
   var addrEl  = document.getElementById('pte-addr-'+id);
@@ -1142,8 +1343,9 @@ function saveOrderEdits(id) {
 }
 
 function renderPendingTips() {
-  var pending   = claimedOrders.filter(function(o){ return o.confirmedTip==null; });
-  var confirmed = claimedOrders.filter(function(o){ return o.confirmedTip!=null; });
+  var byNewest = function(a,b){ return (b.claimedTime||b.ts||0) - (a.claimedTime||a.ts||0); };
+  var pending   = pendingTipOrders.filter(function(o){ return o.confirmedTip==null; }).sort(byNewest);
+  var confirmed = pendingTipOrders.filter(function(o){ return o.confirmedTip!=null; }).sort(byNewest);
 
   var pl = document.getElementById('pendingTipsList');
   if (!pending.length) {
@@ -1164,7 +1366,6 @@ function togglePanel(id, btn) {
   var el = document.getElementById(id); if (!el) return;
   el.classList.toggle('open');
   var isOpen = el.classList.contains('open');
-  // Update just this button's text, not sibling
   if (btn) {
     if (id.startsWith('pte-')) {
       btn.textContent = isOpen ? 'Close edit ✏️' : 'Edit order ✏️';
@@ -1179,14 +1380,14 @@ function confirmTip(id){
   var inp=document.getElementById('ptip-'+id); if(!inp)return;
   var tipVal=parseFloat(inp.value);
   if (isNaN(tipVal)||tipVal<0){notify('Enter a tip amount (0 if no tip)',true);return;}
-  var order=claimedOrders.find(function(o){return o.id===id;});
+  var order=pendingTipOrders.find(function(o){return o.id===id;}); 
   if (!order)return;
   order.confirmedTip=tipVal; saveAllAndSync(); renderPendingTips(); renderStats();
   notify('$'+tipVal.toFixed(2)+' tip saved - KPIs updated!');
 }
 
 function unconfirmTip(id){
-  var order=claimedOrders.find(function(o){return o.id===id;});
+  var order=pendingTipOrders.find(function(o){return o.id===id;}); 
   if (!order)return;
   if (!confirm('Move "$'+order.confirmedTip.toFixed(2)+' tip" back to pending so you can re-enter it?')) return;
   order.confirmedTip=null; saveAllAndSync(); renderPendingTips(); renderStats();
@@ -1194,10 +1395,59 @@ function unconfirmTip(id){
 }
 function unclaimFromTips(id){
   if (!confirm('Remove this order from your claimed list entirely?')) return;
-  claimedOrders = claimedOrders.filter(function(o){ return o.id !== id; });
+  pendingTipOrders = pendingTipOrders.filter(function(o){ return o.id !== id; }); 
   saveAllAndSync(); renderBadge(); renderPendingTips(); renderStats();
   notify('Order removed from claimed.');
 }
+
+function claimOrderResult(idx) { 
+  var o=currentResults[idx]; if (!o||o.claimed) return;
+  o.claimed=true; 
+  var c={id:'c'+Date.now()+'-'+Math.random().toString(36).slice(2,5),store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now(),claimedTime:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg', status: 'queued', runStartTime: null, runEndTime: null, runDurationMinutes: null, timerIntervalId: null};
+  pendingTipOrders.unshift(c); 
+  saveAllAndSync(); 
+  renderBadge(); 
+  renderResults(); 
+  renderActiveOrders(); 
+  notify(`Order from ${o.store} claimed!`);
+}
+
+
+function claimBatch(idxArr) {
+  var names=[];
+  idxArr.forEach(function(idx){
+    var o=currentResults[idx]; if (!o||o.claimed) return;
+    o.claimed=true;
+    var c={id:'c'+Date.now()+idx,store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now()+idx,claimedTime:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg',batchGroup:true, status: 'queued', runStartTime: null, runEndTime: null, runDurationMinutes: null, timerIntervalId: null};
+    pendingTipOrders.unshift(c); names.push(o.store); 
+  });
+  saveAllAndSync(); renderBadge(); renderResults(); renderActiveOrders();
+  notify('Batch claimed: '+names.join(' + ')+'!');
+}
+function unclaimResult(idx){var o=currentResults[idx];if(!o)return;o.claimed=false;renderResults();notify('Unclaimed');}
+
+
+// ════════ INITIALIZATION LOGIC ════════
+try { 
+  pendingTipOrders = JSON.parse(localStorage.getItem('soa_pending_tips') || '[]');
+
+  completedRuns = JSON.parse(localStorage.getItem('soa_completed_runs') || '[]');
+} catch(e) {
+  pendingTipOrders = [];
+  completedRuns = [];
+}
+
+applySettings(); 
+renderKeyStatus(); 
+renderKeyBanner(); 
+renderBadge(); 
+setTimeout(function(){ 
+  updateStorageInfo(); 
+  renderSheetStatus(); 
+  renderActiveOrders(); 
+  goTab('analyze', document.querySelectorAll('.tab')[0]); 
+}, 100);
+
 </script>
 </body>
 </html>
