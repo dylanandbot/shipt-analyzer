@@ -605,7 +605,7 @@ function tipIntelBonus(o, intel) {
   var bonus = 0, store = o.store||'', region = o.region||extractRegion(o.address||'');
   if (intel.storeIntel[store] && intel.storeIntel[store].count >= 2) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
   if (intel.regionIntel[region] && intel.regionIntel[region].count >= 2) bonus += intel.regionIntel[region].avgRate*10*weight;
-  return Math.min(15, Math.round(bonus));
+  return Math.min(30, Math.round(bonus));
 }
 function tipPotentialLabel(o, intel) {
   var store=o.store||'', region=o.region||extractRegion(o.address||'');
@@ -963,15 +963,21 @@ function stopOrderRun(orderId) {
 
   saveAllAndSync();
   renderActiveOrders();   // Remove from active view
+  renderBadge();          // Order left the active set, so the count must drop
   renderPendingTips();
   renderStats();
   notify(`Run for ${order.store} - Order ${order.id.slice(-5)} completed! Duration: ${order.runDurationMinutes.toFixed(1)} mins.`);
 }
 
-function renderBadge() { 
-  var claimedCount = pendingTipOrders.length;
-  document.getElementById('claimedBadge').textContent = claimedCount + ' claimed';
-  if (claimedCount > 0) {
+function renderBadge() {
+  // Counts what's still on the plate, not everything ever claimed: this badge
+  // shows on every tab, and the all-time total only ever grows. Mirrors the
+  // Active tab's filter so the two can never disagree.
+  var activeCount = pendingTipOrders.filter(function(o) {
+    return o.status === 'queued' || o.status === 'running';
+  }).length;
+  document.getElementById('claimedBadge').textContent = activeCount + ' active';
+  if (activeCount > 0) {
     document.getElementById('claimedBadge').classList.add('on');
   } else {
     document.getElementById('claimedBadge').classList.remove('on');
