@@ -417,7 +417,8 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
       <button class="key-save-btn" onclick="saveSheetUrl()" style="background:var(--green);">Save</button>
     </div>
     <div id="sheetUrlStatus" style="font-size:11px;color:var(--muted);margin-bottom:10px;"></div>
-    <button class="btn btn-green" onclick="syncToSheets(false)" style="margin-top:0;">Sync all orders to sheet →</button>
+    <button class="btn btn-green" onclick="syncToSheets(false)" style="margin-top:0;">Sync changed orders to sheet →</button>
+    <button class="btn" onclick="if(confirm('Re-upload every claimed order to the sheet and Supabase? Use this if something looks out of date. It can take a few minutes.')){syncToSheets(false,{full:true});}" style="margin-top:8px;font-size:12px;padding:10px;">Force full sync</button>
     <div id="syncStatus" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;"></div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
       <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:8px;">Setup guide (5 minutes, free):</div>
@@ -644,10 +645,17 @@ function buildTipIntelligence() {
   }
   return {storeIntel:storeIntel,regionIntel:regionIntel};
 }
+// Confirmed tips a store or region needs before it is allowed to move a score.
+// Raised from 2 to 5 on 2026-08-27: at 2, a single unlucky pair of orders could brand
+// a store a bad tipper. Measured against real history, 5 costs about 8% of collected
+// tips — dropping only the two thinnest stores — and every threshold from 4 to 10
+// currently behaves identically, so 5 reaches the quieter stores soonest.
+var TIP_INTEL_MIN = 5;
+
 function tipIntelBonus(o, intel) {
   var weight = settings.tipWeight != null ? settings.tipWeight : 2; if (weight===0) return 0;
   var bonus = 0, store = o.store||'';
-  if (intel.storeIntel[store] && intel.storeIntel[store].count >= 2) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
+  if (intel.storeIntel[store] && intel.storeIntel[store].count >= TIP_INTEL_MIN) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
   // A batch delivers to more than one region. Average their intel rather than crediting
   // the whole offer to whichever stop happened to be listed first.
   var regions = (o.stops && o.stops.length)
@@ -655,7 +663,7 @@ function tipIntelBonus(o, intel) {
     : [o.region || extractRegion(o.address||'')];
   var rSum = 0, rCount = 0;
   regions.forEach(function(r){
-    if (intel.regionIntel[r] && intel.regionIntel[r].count >= 2) { rSum += intel.regionIntel[r].avgRate*10*weight; rCount++; }
+    if (intel.regionIntel[r] && intel.regionIntel[r].count >= TIP_INTEL_MIN) { rSum += intel.regionIntel[r].avgRate*10*weight; rCount++; }
   });
   if (rCount) bonus += rSum/rCount;
   return Math.min(30, Math.round(bonus));
@@ -663,7 +671,7 @@ function tipIntelBonus(o, intel) {
 function tipPotentialLabel(o, intel) {
   var store=o.store||'', region=o.region||extractRegion(o.address||'');
   var si=intel.storeIntel[store], ri=intel.regionIntel[region];
-  var src=(si&&si.count>=2)?si:((ri&&ri.count>=2)?ri:null);
+  var src=(si&&si.count>=TIP_INTEL_MIN)?si:((ri&&ri.count>=TIP_INTEL_MIN)?ri:null);
   if (!src) return null;
   var avg=src.avgTip||0;
   if (avg>=5) return {label:'High tip area',cls:'high',avg:avg};
@@ -749,14 +757,8 @@ async function syncBonusesToSheets(silent, opts) {
   }
 }
 
-async function syncToSheets(silent) {
-  if (!sheetsUrl) { notify('Add your Google Script URL in Settings first', true); return; }
-  if (!pendingTipOrders.length) { if (!silent) notify('No orders to sync yet', true); return; } 
-  var statusEl = document.getElementById('syncStatus');
-  if (statusEl) statusEl.textContent = 'Syncing ' + pendingTipOrders.length + ' orders...';
-  if (!silent) notify('Syncing to Google Sheets...');
-
-  var rows = pendingTipOrders.map(function(o) {
+function buildSyncRow(o) {
+  {
     var stops = (o.stops && o.stops.length) ? o.stops : null;
     // On a batch row the Confirmed Tip column holds stop 1's tip, matching the Address
     // and Region on that same row, so tip intelligence credits each tip to the region
@@ -790,8 +792,39 @@ async function syncToSheets(silent) {
       stops && stops[1] ? (stops[1].region||'') : '',
       stops && stops[1] && stops[1].tip != null ? stops[1].tip.toFixed(2) : ''
     ];
+  }
+}
+
+// Fingerprint of exactly what gets written to the sheet. Comparing this to the value
+// stamped after the last successful send is what lets a sync skip untouched orders,
+// and it can't drift out of date the way a hand-set "dirty" flag would — any change to
+// any synced field changes the fingerprint automatically.
+function syncSignature(row) { return row.join(''); }
+
+async function syncToSheets(silent, opts) {
+  if (!sheetsUrl) { notify('Add your Google Script URL in Settings first', true); return; }
+  if (!pendingTipOrders.length) { if (!silent) notify('No orders to sync yet', true); return; }
+  var full = !!(opts && opts.full);
+  var statusEl = document.getElementById('syncStatus');
+
+  // Only send what changed. Apps Script makes one Supabase round-trip per row, so
+  // re-uploading every order on every save meant a single tip confirmation cost dozens
+  // of HTTP calls and minutes of wall time — and that grew with every order claimed.
+  var candidates = pendingTipOrders.map(function(o) { return { order:o, row:buildSyncRow(o) }; });
+  var changed = full ? candidates : candidates.filter(function(c) {
+    return syncSignature(c.row) !== c.order._syncSig;
   });
 
+  if (!changed.length) {
+    if (statusEl) statusEl.textContent = 'Up to date · ' + pendingTipOrders.length + ' orders';
+    if (!silent) notify('Everything is already synced');
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Syncing ' + changed.length + ' of ' + pendingTipOrders.length + ' orders...';
+  if (!silent) notify('Syncing ' + changed.length + (full ? ' orders (full)...' : ' changed orders...'));
+
+  var rows = changed.map(function(c) { return c.row; });
   var CHUNK = 10;
   var chunks = [];
   for (var i = 0; i < rows.length; i += CHUNK) chunks.push(rows.slice(i, i + CHUNK));
@@ -805,7 +838,12 @@ async function syncToSheets(silent) {
       await fetch(url, { method: 'GET', mode: 'no-cors' });
       if (ci < chunks.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
     }
-    if (statusEl) statusEl.textContent = 'Last synced: ' + new Date().toLocaleTimeString() + ' · ' + rows.length + ' orders';
+    // Stamp only what was actually sent. This is optimistic — a no-cors request tells
+    // us nothing about what Apps Script did with it — so "Force full sync" in Settings
+    // is the recovery path if a write is ever lost.
+    changed.forEach(function(c) { c.order._syncSig = syncSignature(c.row); });
+    saveAll();
+    if (statusEl) statusEl.textContent = 'Last synced: ' + new Date().toLocaleTimeString() + ' · ' + rows.length + ' of ' + pendingTipOrders.length + ' orders';
     if (!silent) notify('Synced ' + rows.length + ' orders to Google Sheets!');
   } catch(e) {
     if (statusEl) statusEl.textContent = 'Sync failed: ' + e.message;

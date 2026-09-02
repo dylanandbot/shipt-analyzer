@@ -14,11 +14,15 @@ This document details a web application I built to optimize my profitability as 
 *   **Persistent Data Backend:** Offloads data to Google Sheets for scalable, long-term analysis.
 *   **Shop-Time Tracking:** Per-order timers measure how long jobs actually take, replacing an estimated hourly rate with a real one.
 *   **Cloud-Synced Tip Intelligence:** Order history flows into Supabase, so scoring uses every order ever synced rather than only what one browser holds.
+*   **Batch Offers as One Job:** A two-stop batch is stored as a single order with its stops recorded separately, so shared time and mileage are never double counted while each destination still trains tip intelligence on its own.
+*   **Day Bonus Tracking:** Promo pay that belongs to no single order is recorded separately, counting toward earnings without contaminating per-store tip averages.
 
 **Challenges I Solved:**
 *   **Tuned a Naive Weighting:** Scoring leaned hardest on base pay, but real order data showed tips drove nearly half my income, so I reweighted it.
 *   **Re-architected for Scale:** Migrated data storage from fragile browser local storage to a robust Google Sheets database, then to Supabase for durable, device-independent history.
 *   **Debugged a Silently Failing Pipeline:** Traced a sync bug across three services where the app reported success no matter what actually happened.
+*   **Fixed a Sync That Scaled Badly:** Found and removed a design that re-uploaded my entire order history on every single edit.
+*   **Modeled a Batch Honestly:** Chose a schema that keeps shared costs accurate without discarding per-customer tip data.
 *   **Secured a Public Repository:** Designed key handling and database access rules so a public repo and a browser-held key expose nothing.
 
 ---
@@ -51,6 +55,12 @@ The application is a single HTML file with vanilla JavaScript, making it fast, p
 *   **Actual vs. Estimated Hourly Rate:** Every claimed order gets its own start/stop timer with a live counter, and orders run independently so a batch of three can be timed separately. The original hourly figure was an estimate derived from item count and distance. This measures what the job actually took. The gap between the two is the most useful number the tool produces, because it reveals which stores are slow in ways an offer screen never shows.
 
 *   **Cloud-Synced Tip Intelligence:** Tip history lives in Supabase rather than only in the browser. Claimed orders flow to Google Sheets via Apps Script, an Edge Function writes them to Postgres, and a second Edge Function returns aggregated tip averages by store and region that the analyzer pulls in before scoring. Tip intelligence now reflects my entire history instead of whatever a single device happens to be holding.
+
+*   **Batch Offers as a Single Job:** When Shipt offers two orders together, the analyzer keeps them as one order with one timer, because they are one shopping trip and one drive. Splitting them into two records would have meant either duplicating the mileage and minutes or inventing halved values, and both would corrupt the hourly rate. Each stop still carries its own address and its own tip, so the two destinations train tip intelligence independently rather than crediting one neighborhood with both customers' generosity.
+
+*   **Day Bonus Tracking:** Shipt pays promo bonuses that belong to no particular order, such as completing a set number of orders in a day. These are recorded on their own, deliberately outside the order data. Folding them into orders would have inflated the apparent tip performance of whichever stores happened to be nearby, teaching the scorer something false about them.
+
+*   **Deletion That Propagates:** Unclaiming an order removes it from the browser, the spreadsheet, and the database in one action. Previously the app forgot it while both downstream systems kept it forever, which quietly inflated every earnings figure built from them.
 
 ## 3. Proof: The Workflow in Action
 
@@ -100,14 +110,14 @@ Claimed orders appear in the "Active" tab, where each one has its own Start Run 
 
 ### Step 6: Data Tracking
 
-Finally, all completed and updated orders are synced to Google Sheets and on into Supabase, and the analyzer's "Stats" tab provides a dashboard view of key performance indicators, including actual hourly rate calculated from measured shop time.
+Finally, all completed and updated orders are synced to Google Sheets and on into Supabase, and the analyzer's "Stats" tab provides a dashboard view of key performance indicators. Alongside the estimated figure it reports an actual hourly rate calculated from measured shop time, and a net rate after the standard mileage deduction. Orders whose tips have not arrived yet still count toward every figure, contributing zero rather than a guess, so the numbers are usable mid-shift and can only ever understate what I have earned.
 <p align="center">
   <img src="shipt_analyzer_assets/05_stats_page.png" alt="The Stats page of the Shipt Analyzer, showing various metrics like Total Earned, Hourly Rate, and Tip Rate." width="600">
 </p>
 
 ## 4. Challenges & How I Solved Them
 
-Building the analyzer involved several iterations and learning opportunities. Five challenges stood out, and the later ones had less to do with writing code than with diagnosing systems that gave me almost no feedback about what they were doing.
+Building the analyzer involved several iterations and learning opportunities. Six challenges stood out, and the later ones had less to do with writing code than with diagnosing systems that gave me almost no feedback about what they were doing.
 
 ### Challenge 1: Refining the Scoring System
 
@@ -116,6 +126,10 @@ Building the analyzer involved several iterations and learning opportunities. Fi
 **The Solution:** The scoring system is user-configurable, with settings that let me define my personal profitability targets (e.g., minimum pay, max distance, target $/hour). After my first weeks of data, I tuned these: I raised my minimum pay and lowered my max distance so fewer mediocre orders get rated as "high value". The biggest change was the "Tip Intelligence" weight. Based on my finding that tips were 50% of my income, I increased this weight to a 4 out of 5, causing the algorithm to favor orders from stores, neighborhoods, and customers with a proven history of high tips. This tuning transformed the analyzer from a simple calculator into a strategic tool.
 
 One thing I realized later: raising the "Tip Intelligence" weight lowered the bar for stores to hit the tip bonus cap rather than letting great stores outscore decent ones. With the cap at 15 points, a decent tipper and an excellent one both maxed out and scored identically, which defeated the purpose of weighting tips heavily in the first place. I raised the cap to 30 so the bonus has room to discriminate again, and I am running with that before tuning it further.
+
+A related question was how much evidence a store should need before it is allowed to influence a score at all. The original threshold was two confirmed tips, which is thin enough that one unlucky pair could brand a store a bad tipper for good. Rather than pick a new number by feel, I queried the actual distribution of my tip history. It turned out that 85% of my tips came from just three store locations, and that there was a gap in the data between a store with three tips and the next one with ten. Every threshold from four through ten therefore produced identical behavior against my current history, and even the strictest of them cost only 8% of my collected tips.
+
+That reframed the decision entirely. The choice was not about what I gave up today, because all the candidates cost the same, but about which threshold the quieter stores would reach soonest. I settled on five, which discards the two thinnest stores now and lets the rest rejoin within weeks rather than months. The broader lesson is that a parameter I would otherwise have guessed at took one SQL query to answer properly.
 
 *Below are the settings I configured to fine-tune the algorithm and connect the tool's services based on my real-world experience.*
 <p align="center">
@@ -170,13 +184,27 @@ The root cause was an Apps Script deployment subtlety. Creating a "New deploymen
 
 I now treat any pipeline that cannot report its own failures as requiring an external source of truth. The count of stores in synced history, visible in Settings, is what I check to confirm a sync actually worked. Not the success message.
 
-### Challenge 5: Securing a Public Repository
+### Challenge 5: A Sync That Got Slower With Every Order
+
+**The Problem:** Deleting an order appeared not to work. I removed it in the analyzer, checked the spreadsheet, and the row was still sitting there. But the database showed it had already been deleted, so the operation had worked and I had simply looked too early. What I found while investigating was worse than the thing I was investigating: one Apps Script execution had taken 218 seconds.
+
+**The Solution:** The cause was a design that had been quietly degrading since the day I wrote it. Every save re-uploaded *every* claimed order, and the Apps Script made one separate call to the database per row. Confirming a single tip therefore cost dozens of HTTP round-trips and minutes of wall time, and each new order I claimed made every future save slower.
+
+The obvious fix is to mark orders as changed and send only those. I avoided that, because it depends on remembering to set a flag in all eight places an order can be modified, and the failure mode of forgetting one is an order that silently never syncs again. Instead I fingerprint the row that would be written and compare it against the fingerprint stored after the last successful send. Any change to any synced field changes the fingerprint automatically, so there is no bookkeeping to forget.
+
+Measured against forty orders, confirming one tip went from forty rows across four requests to one row in one request.
+
+The tradeoff is worth stating plainly, because it is the same `no-cors` limitation that caused Challenge 4. Since the browser cannot read the response, marking a row as synced is an optimistic guess. The previous design was wasteful but self-healing, as it re-sent everything constantly; the new one is fast but would not notice a lost write. I added a "Force full sync" button as the deliberate recovery path, which is the honest resolution rather than pretending the guarantee exists.
+
+### Challenge 6: Securing a Public Repository
 
 **The Problem:** Moving to Supabase meant the browser needed a database key, and this repository is public. A key committed to source, or a table left open, would expose my entire order history to anyone who found it.
 
 **The Solution:** No credentials appear in the repository. The Claude API key, Apps Script URL, and Supabase URL and publishable key are entered in the Settings tab at runtime and held in browser local storage.
 
-That alone is not enough, because the publishable key still reaches the browser and could be read from it. So the `orders` table has Row Level Security enabled with no policies at all, which means that key can neither read nor write it. Every legitimate operation goes through an Edge Function using the service role key, which lives only as an Apps Script property on Google's servers and never touches the client.
+That alone is not enough, because the publishable key still reaches the browser and could be read from it. So the `orders` and `bonuses` tables have Row Level Security enabled with no policies at all, which means that key can neither read nor write them. Every legitimate operation goes through an Edge Function using the service role key, which lives only as an Apps Script property on Google's servers and never touches the client.
+
+Deletion got the narrowest treatment of all, since it is the one operation that cannot be undone. The function that removes an order accepts a single primary key and refuses any request that does not name one, so there is no way to express a bulk or filtered delete through it. The equivalent function for bonuses does support clearing everything, but only when the caller explicitly says that is the intent; an empty request means "nothing to report" rather than "delete it all", so a failed read upstream cannot quietly empty the table.
 
 I verified this rather than assuming it: requesting the table directly with the publishable key returns an empty array, against a table holding seventy-eight rows.
 
