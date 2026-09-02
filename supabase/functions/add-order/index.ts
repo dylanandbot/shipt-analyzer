@@ -43,6 +43,10 @@ Deno.serve(async (req) => {
       run_started_at: body.run_started_at ?? null,
       run_ended_at: body.run_ended_at ?? null,
       shop_minutes: body.shop_minutes ?? null,
+      // Second delivery of a batch. Null on every single-order row.
+      stop2_address: body.stop2_address ?? null,
+      stop2_region: body.stop2_region ?? null,
+      stop2_tip: body.stop2_tip ?? null,
     }
 
     // The analyzer re-syncs every claimed order on each sync, so the same

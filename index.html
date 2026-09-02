@@ -317,6 +317,10 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
     <div class="met"><div class="lbl">Miles driven</div><div class="val" id="kpiMiles">0</div><div class="sub">logged</div></div>
     <div class="met"><div class="lbl">Tax deduction</div><div class="val" id="kpiDeduct">$0</div><div class="sub">at $0.70/mi</div></div>
   </div>
+  <div class="mgrid">
+    <div class="met"><div class="lbl">Actual $/hour</div><div class="val g" id="kpiActualRate">--</div><div class="sub" id="kpiActualRateSub">from run timers</div></div>
+    <div class="met"><div class="lbl">Net $/hour</div><div class="val g" id="kpiNetRate">--</div><div class="sub">after mileage</div></div>
+  </div>
   <div class="card">
     <div class="card-title">Best tipping regions in Lincoln</div>
     <div id="regionStats"><div style="font-size:12px;color:var(--muted);">Claim orders to build region data.</div></div>
@@ -339,6 +343,17 @@ body{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:
     <div style="font-size:12px;color:var(--purple);line-height:1.8;">
       Tips arrive up to 24hrs after delivery. Enter each tip here to keep your $/hr stats accurate and train your tip intelligence. Tap <strong>More details</strong> on any order to see the full breakdown and original screenshot.
     </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Day bonuses</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;">Promo pay that isn't tied to a single order — shift bonuses, order-count challenges, peak pay. These count toward your earnings and $/hour without distorting per-store tip intelligence.</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <input class="key-input" type="date" id="bonusDate" style="flex:1;">
+      <input class="key-input" type="number" inputmode="decimal" step="0.01" min="0" id="bonusAmount" placeholder="0.00" style="width:100px;">
+    </div>
+    <input class="key-input" type="text" id="bonusNote" placeholder="What was it for? (optional)" style="width:100%;margin-bottom:10px;">
+    <button class="btn-sm filled" style="width:100%;padding:10px;" onclick="addDayBonus()">Add bonus</button>
+    <div id="dayBonusList" style="margin-top:12px;"></div>
   </div>
   <div class="card">
     <div class="card-title">Awaiting tip confirmation</div>
@@ -440,7 +455,8 @@ var remoteTipIntel = null;
 var settings = JSON.parse(localStorage.getItem('soa_settings') || '{"minPay":10,"maxItems":50,"maxMiles":8,"targetRate":18,"tipWeight":2}');
 var pendingTipOrders = []; 
 
-var completedRuns = []; 
+var completedRuns = [];
+var dailyBonuses = [];
 var currentResults = [];
 var currentSort = 'score';
 var currentPeriod = 'today';
@@ -468,6 +484,21 @@ function extractRegion(address) {
   if (a.match(/west|pioneers|coddington|w o st|w a st|ridge/)) return 'West Lincoln';
   if (a.match(/university|unl|vine|holdrege|salt creek/)) return 'University Area';
   return 'Other';
+}
+
+function orderNickname(address) {
+  if (!address) return null;
+  // The first comma segment is the street line: "1234 N 48th St, Lincoln, NE".
+  var street = String(address).split(',')[0].trim();
+  // Drop the house number so the nickname names the street, not the customer.
+  street = street.replace(/^[#\d]+[\w-]*\s+/, '').trim();
+  // Strip trailing unit designators, which can carry an apartment number.
+  street = street.replace(/\s+(apt|apartment|unit|ste|suite|#)\s*\S*$/i, '').trim();
+  return street || null;
+}
+
+function displayName(o) {
+  return o.nickname || (o.address ? orderNickname(o.address) : null) || ('Order ' + String(o.id||'').slice(-3));
 }
 
 function parseLincolnAddress(address) {
@@ -551,8 +582,13 @@ function scoreOrder(o,tipBonus,batchBonus) {
   var s=0, ppm=o.estMinutes>0?o.pay/o.estMinutes:0, tppm=settings.targetRate/60;
   s+=Math.min(45,(ppm/Math.max(tppm,0.001))*45);
   if (o.pay>=settings.minPay) s+=20; else s-=20;
-  if (o.items>settings.maxItems) s-=15; else if (o.items>35) s-=5; else if (o.items>0&&o.items<=20) s+=8;
-  if (o.distance>settings.maxMiles) s-=15; else if (o.distance>5) s-=5; else if (o.distance>0&&o.distance<=3) s+=8;
+  // maxItems and maxMiles are per-order limits, but a batch reports combined figures.
+  // Compare per delivery so sharing one drive between two stops reads as the
+  // efficiency it is, instead of tripping the distance penalty.
+  var deliveries=(o.stops&&o.stops.length)?o.stops.length:1;
+  var itemsEach=(o.items||0)/deliveries, milesEach=(o.distance||0)/deliveries;
+  if (itemsEach>settings.maxItems) s-=15; else if (itemsEach>35) s-=5; else if (itemsEach>0&&itemsEach<=20) s+=8;
+  if (milesEach>settings.maxMiles) s-=15; else if (milesEach>5) s-=5; else if (milesEach>0&&milesEach<=3) s+=8;
   if (o.tip>3) s+=5; if (o.bonus>0) s+=5;
   s+=(tipBonus||0); s+=(batchBonus||0);
   return Math.max(0,Math.min(100,Math.round(s)));
@@ -573,13 +609,21 @@ function buildReason(o) {
 
 function buildTipIntelligence() {
   var storeMap = {}, regionMap = {};
-  pendingTipOrders.forEach(function(o) { 
-    var tip = o.confirmedTip != null ? o.confirmedTip : (o.tip || 0);
-    var total = (o.basePay||0) + tip + (o.bonus||0);
-    if (o.store) { if (!storeMap[o.store]) storeMap[o.store] = {tips:[],count:0}; storeMap[o.store].tips.push(tip); storeMap[o.store].count++; }
-    var region = o.region || extractRegion(o.address||'');
-    if (!regionMap[region]) regionMap[region] = {tips:[],totals:[]};
-    regionMap[region].tips.push(tip); regionMap[region].totals.push(total);
+  pendingTipOrders.forEach(function(o) {
+    // Confirmed deliveries only. An order whose tip hasn't landed yet used to be
+    // counted as a $0 tip, which taught the scorer that a store tips badly when
+    // the truth was simply that nobody had reported yet.
+    var obs = tipObservations(o);
+    if (!obs.length) return;
+    // Split fixed pay across the order's deliveries so a batch's tip-to-pay ratio
+    // stays comparable with a single order's.
+    var deliveries = (o.stops && o.stops.length) ? o.stops.length : 1;
+    var share = ((o.basePay||0) + (o.bonus||0)) / deliveries;
+    obs.forEach(function(x) {
+      if (x.store) { if (!storeMap[x.store]) storeMap[x.store] = {tips:[],count:0}; storeMap[x.store].tips.push(x.tip); storeMap[x.store].count++; }
+      if (!regionMap[x.region]) regionMap[x.region] = {tips:[],totals:[]};
+      regionMap[x.region].tips.push(x.tip); regionMap[x.region].totals.push(share + x.tip);
+    });
   });
   var storeIntel = {}, regionIntel = {};
   Object.keys(storeMap).forEach(function(s) { var d=storeMap[s]; storeIntel[s] = {avgTip:d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length, count:d.count}; });
@@ -602,9 +646,18 @@ function buildTipIntelligence() {
 }
 function tipIntelBonus(o, intel) {
   var weight = settings.tipWeight != null ? settings.tipWeight : 2; if (weight===0) return 0;
-  var bonus = 0, store = o.store||'', region = o.region||extractRegion(o.address||'');
+  var bonus = 0, store = o.store||'';
   if (intel.storeIntel[store] && intel.storeIntel[store].count >= 2) bonus += (intel.storeIntel[store].avgTip/Math.max(o.pay||10,1))*20*weight;
-  if (intel.regionIntel[region] && intel.regionIntel[region].count >= 2) bonus += intel.regionIntel[region].avgRate*10*weight;
+  // A batch delivers to more than one region. Average their intel rather than crediting
+  // the whole offer to whichever stop happened to be listed first.
+  var regions = (o.stops && o.stops.length)
+    ? o.stops.map(function(s){ return s.region || extractRegion(s.address||''); })
+    : [o.region || extractRegion(o.address||'')];
+  var rSum = 0, rCount = 0;
+  regions.forEach(function(r){
+    if (intel.regionIntel[r] && intel.regionIntel[r].count >= 2) { rSum += intel.regionIntel[r].avgRate*10*weight; rCount++; }
+  });
+  if (rCount) bonus += rSum/rCount;
   return Math.min(30, Math.round(bonus));
 }
 function tipPotentialLabel(o, intel) {
@@ -624,6 +677,7 @@ function saveAll() {
     localStorage.setItem('soa_pending_tips', JSON.stringify(toSavePendingTips));
 
     localStorage.setItem('soa_completed_runs', JSON.stringify(completedRuns));
+    localStorage.setItem('soa_daily_bonuses', JSON.stringify(dailyBonuses));
   } catch(e) {
     notify('Storage full — trimming oldest orders', true);
     var trimmed = toSavePendingTips.slice(0, Math.max(1, Math.floor(toSavePendingTips.length * 0.8)));
@@ -634,7 +688,65 @@ function saveAll() {
 
 function saveAllAndSync() {
   saveAll();
-  if (sheetsUrl) syncToSheets(true);
+  if (sheetsUrl) { syncToSheets(true); scheduleBonusSync(false); }
+}
+
+var bonusSyncTimer = null, bonusSyncAllowEmpty = false;
+
+// Coalesce rapid bonus edits into one request. Every sync carries the complete list
+// and Apps Script rebuilds the sheet from it, so only the last one matters — and two
+// overlapping requests can finish out of order, leaving the sheet on the older state.
+function scheduleBonusSync(allowEmpty) {
+  bonusSyncAllowEmpty = bonusSyncAllowEmpty || !!allowEmpty;
+  if (bonusSyncTimer) clearTimeout(bonusSyncTimer);
+  bonusSyncTimer = setTimeout(function() {
+    bonusSyncTimer = null;
+    var ae = bonusSyncAllowEmpty;
+    bonusSyncAllowEmpty = false;
+    syncBonusesToSheets(true, { allowEmpty: ae });
+  }, 500);
+}
+
+function bonusDateISO(ts) {
+  var d = new Date(ts);
+  // ISO order, not toLocaleString: this column sorts correctly as text and parses
+  // straight into a Postgres DATE, unlike the Claimed At column on the Orders sheet.
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+var BONUS_CHUNK = 50;
+
+async function syncBonusesToSheets(silent, opts) {
+  if (!sheetsUrl) { if (!silent) notify('Add your Google Script URL in Settings first', true); return; }
+  var allowEmpty = !!(opts && opts.allowEmpty);
+  var rows = dailyBonuses.map(function(b) {
+    return [ b.id || '', bonusDateISO(b.ts), (b.amount||0).toFixed(2), b.note || '' ];
+  });
+  // The whole list goes every time and the sheet is rebuilt from it, so deleting a
+  // bonus in the app removes it downstream instead of leaving an orphan that
+  // quietly inflates the Summary tab.
+  //
+  // An empty list only propagates when the user actually deleted the last bonus.
+  // Reaching here empty from any other caller is more likely a failed localStorage
+  // read than a real "I have none", and wiping the sheet on that guess is
+  // unrecoverable.
+  if (!rows.length && !allowEmpty) { if (!silent) notify('No bonuses to sync yet', true); return; }
+
+  var chunks = [];
+  for (var i = 0; i < rows.length; i += BONUS_CHUNK) chunks.push(rows.slice(i, i + BONUS_CHUNK));
+  if (!chunks.length) chunks.push([]); // deliberate empty sync: clears the sheet
+
+  try {
+    for (var ci = 0; ci < chunks.length; ci++) {
+      var payload = JSON.stringify({ action:'syncBonuses', rows: chunks[ci], chunk: ci, total: chunks.length, allowEmpty: allowEmpty });
+      var encoded = btoa(unescape(encodeURIComponent(payload)));
+      await fetch(sheetsUrl + '?d=' + encoded, { method:'GET', mode:'no-cors' });
+      if (ci < chunks.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
+    }
+    if (!silent) notify('Synced ' + rows.length + ' bonuses to Google Sheets!');
+  } catch(e) {
+    if (!silent) notify('Bonus sync failed: ' + e.message, true);
+  }
 }
 
 async function syncToSheets(silent) {
@@ -644,9 +756,14 @@ async function syncToSheets(silent) {
   if (statusEl) statusEl.textContent = 'Syncing ' + pendingTipOrders.length + ' orders...';
   if (!silent) notify('Syncing to Google Sheets...');
 
-  var rows = pendingTipOrders.map(function(o) { 
-    var tip = o.confirmedTip != null ? o.confirmedTip : null;
-    var total = (o.basePay||0) + (tip||0) + (o.bonus||0);
+  var rows = pendingTipOrders.map(function(o) {
+    var stops = (o.stops && o.stops.length) ? o.stops : null;
+    // On a batch row the Confirmed Tip column holds stop 1's tip, matching the Address
+    // and Region on that same row, so tip intelligence credits each tip to the region
+    // that actually earned it. Stop 2 rides along in its own columns.
+    var tip = stops ? stops[0].tip : (o.confirmedTip != null ? o.confirmedTip : null);
+    var allTips = stops ? stops.reduce(function(s,x){return s+(x.tip||0);},0) : (o.confirmedTip||0);
+    var total = (o.basePay||0) + allTips + (o.bonus||0);
     return [
       o.id || '',
       o.ts ? new Date(o.ts).toLocaleString() : '',
@@ -655,8 +772,10 @@ async function syncToSheets(silent) {
       o.region || '',
       (o.basePay||0).toFixed(2),
       (o.bonus||0).toFixed(2),
-      tip != null ? tip.toFixed(2) : 'pending',
-      tip != null ? total.toFixed(2) : 'pending',
+      // Blank rather than 'pending' or 0. Blank is skipped by SUM and AVERAGE, and it
+      // stays distinguishable from a customer who genuinely tipped nothing.
+      tip != null ? tip.toFixed(2) : '',
+      total.toFixed(2),
       o.items || 0,
       o.estMinutes || 0,
       o.distance || 0,
@@ -665,7 +784,11 @@ async function syncToSheets(silent) {
       o.status || 'unstarted',
       o.runStartTime ? new Date(o.runStartTime).toLocaleString() : '',
       o.runEndTime ? new Date(o.runEndTime).toLocaleString() : '',
-      o.runDurationMinutes != null ? o.runDurationMinutes.toFixed(2) : ''
+      o.runDurationMinutes != null ? o.runDurationMinutes.toFixed(2) : '',
+      tipsPending(o) ? 'pending' : 'confirmed',
+      stops && stops[1] ? (stops[1].address||'') : '',
+      stops && stops[1] ? (stops[1].region||'') : '',
+      stops && stops[1] && stops[1].tip != null ? stops[1].tip.toFixed(2) : ''
     ];
   });
 
@@ -870,7 +993,7 @@ function renderActiveOrders() {
     return `
       <div class="proc-row ${rowClass}" id="active-order-${order.id}">
         <div class="proc-info">
-          <div class="proc-name">${order.store} - Order ${order.id.slice(-5)}</div>
+          <div class="proc-name">${order.store} — ${displayName(order)}</div>
           <div class="proc-stat">
             ${isRunning ? `Running for: <span id="timer-${order.id}">${elapsedTime}</span>` : `Claimed at: ${new Date(order.claimedTime).toLocaleTimeString()}`}
           </div>
@@ -889,6 +1012,23 @@ function renderActiveOrders() {
       orderIntervals[order.id] = setInterval(() => updateOrderTimerDisplay(order.id), 1000);
     }
   });
+}
+
+function actualHoursWorked(orders) {
+  var iv = orders.filter(function(o){ return o.runStartTime && o.runEndTime; })
+                 .map(function(o){ return [o.runStartTime, o.runEndTime]; })
+                 .sort(function(a,b){ return a[0]-b[0]; });
+  if (!iv.length) return 0;
+  // Merge overlapping runs before totalling. Orders taken as a batch share one drive
+  // and one shopping trip, so adding their durations would bill the same hour twice
+  // and report roughly half the real rate.
+  var ms = 0, curStart = iv[0][0], curEnd = iv[0][1];
+  for (var i = 1; i < iv.length; i++) {
+    if (iv[i][0] <= curEnd) { curEnd = Math.max(curEnd, iv[i][1]); }
+    else { ms += curEnd - curStart; curStart = iv[i][0]; curEnd = iv[i][1]; }
+  }
+  ms += curEnd - curStart;
+  return ms / 3600000;
 }
 
 function formatDuration(seconds) {
@@ -1053,6 +1193,7 @@ async function analyzeAll() {
         data.score=scoreOrder(data,data.tipBonus,0);
         data.ts=Date.now()+completed; data.claimed=false;
         item.data=data; item.status='done';
+        if (data.isBatchOffer) notify('Batch offer detected — kept as one order with '+data.stops.length+' stops.');
       }
     } catch(e){ item.status='error'; console.error(e.message); }
     completed++;
@@ -1083,7 +1224,29 @@ async function readOneScreenshot(b64,mime) {
   if (!od){var m=text.match(/\{[\s\S]*\}/);if(m){try{od=JSON.parse(m[0]);}catch(e){}}}
   if (!od){od={type:'single'};['pay','basePay','tip','bonus','items','estMinutes','distance'].forEach(function(f){var mx=text.match(new RegExp('"'+f+'"\\\\s*:\\\\s*([\\\\d.]+)'));od[f]=mx?parseFloat(mx[1]):0;});var sm=text.match(/"store"\\\\s*:\\\\s*"([^"]*)"/);od.store=sm?sm[1]:'Unknown';var am=text.match(/"address"\\\\s*:\\\\s*"([^"]*)"/);od.address=am?am[1]:'';}
 
+  if (od.type==='batch' && od.orders && od.orders.length===2) {
+    // One batch offer is one drive and one shopping trip, so it stays one order.
+    // Item counts add together; time and distance are already reported for the whole run.
+    var stops=od.orders.map(function(sub){
+      var addr=String(sub.address||'');
+      return {address:addr,region:extractRegion(addr),nickname:orderNickname(addr),items:parseInt(sub.items)||0,tip:null};
+    });
+    var batchPay=parseFloat(od.totalPay)||od.orders.reduce(function(s,x){return s+(parseFloat(x.pay)||0);},0);
+    return {
+      pay:batchPay, basePay:batchPay, tip:0, bonus:parseFloat(od.bonus)||0,
+      items:stops.reduce(function(s,x){return s+x.items;},0),
+      estMinutes:parseFloat(od.estMinutes)||30,
+      distance:parseFloat(od.distance)||0,
+      store:String(od.orders[0].store||'Unknown'),
+      address:stops[0].address,
+      isBatchOffer:true, batchGroup:true, batchScreenshot:true,
+      stops:stops
+    };
+  }
+
   if (od.type==='batch' && od.orders && od.orders.length>=2) {
+    // Three or more stops have no column space in the sheet, so they keep the older
+    // behaviour of splitting into separate orders rather than silently losing a tip.
     var totalPay=parseFloat(od.totalPay)||0;
     var splitPay=totalPay/od.orders.length;
     return {
@@ -1201,21 +1364,32 @@ function filterByPeriod(orders,period) {
   return orders;
 }
 function renderStats() {
-  var orders=filterByPeriod(pendingTipOrders.filter(o => o.confirmedTip !== null), currentPeriod); 
+  // Every claimed order counts immediately. An unconfirmed tip contributes $0 rather
+  // than a guess, so these numbers can only ever understate what you actually made.
+  var orders=filterByPeriod(pendingTipOrders, currentPeriod);
   var totalBase=orders.reduce(function(s,o){return s+(o.basePay||0);},0);
-  var totalTips=orders.reduce(function(s,o){return s+(o.confirmedTip!=null?o.confirmedTip:(o.tip||0));},0);
+  var totalTips=orders.reduce(function(s,o){return s+(o.confirmedTip!=null?o.confirmedTip:0);},0);
   var totalBonus=orders.reduce(function(s,o){return s+(o.bonus||0);},0);
-  var totalEarned=totalBase+totalTips+totalBonus;
+  var sortedBonuses=dailyBonuses.slice().sort(function(a,b){return b.ts-a.ts;});
+  var dayBonus=filterByPeriod(sortedBonuses,currentPeriod).reduce(function(s,b){return s+(b.amount||0);},0);
+  var totalEarned=totalBase+totalTips+totalBonus+dayBonus;
   var totalMins=orders.reduce(function(s,o){return s+(o.estMinutes||0);},0);
   var totalMiles=orders.reduce(function(s,o){return s+(o.distance||0);},0);
+  var deduction=totalMiles*0.70;
   var hourly=totalMins>0?totalEarned/(totalMins/60):0;
+  var actualHrs=actualHoursWorked(orders);
+  var actualHourly=actualHrs>0?totalEarned/actualHrs:0;
+  var netHourly=actualHrs>0?(totalEarned-deduction)/actualHrs:0;
   var avg=orders.length>0?totalEarned/orders.length:0;
   var tipRate=totalEarned>0?totalTips/totalEarned:0;
-  var pending=pendingTipOrders.filter(function(o){return o.confirmedTip==null;}).length; 
+  var pending=orders.filter(tipsPending).length;
   document.getElementById('kpiEarned').textContent='$'+totalEarned.toFixed(2);
-  document.getElementById('kpiEarnedSub').textContent=pending>0?pending+' tips still pending':'all confirmed';
+  document.getElementById('kpiEarnedSub').textContent=pending>0?pending+(pending===1?' tip':' tips')+' pending — actual is higher':(dayBonus>0?'incl. $'+dayBonus.toFixed(2)+' bonuses':'all confirmed');
   document.getElementById('kpiRate').textContent=hourly>0?'$'+hourly.toFixed(2):'--';
-  document.getElementById('kpiRateSub').textContent=totalMins>0?Math.round(totalMins)+' mins total':'no time data';
+  document.getElementById('kpiRateSub').textContent=totalMins>0?Math.round(totalMins)+' est. mins':'no time data';
+  document.getElementById('kpiActualRate').textContent=actualHourly>0?'$'+actualHourly.toFixed(2):'--';
+  document.getElementById('kpiActualRateSub').textContent=actualHrs>0?actualHrs.toFixed(2)+' hrs timed':'no timed runs yet';
+  document.getElementById('kpiNetRate').textContent=netHourly>0?'$'+netHourly.toFixed(2):'--';
   document.getElementById('kpiOrders').textContent=orders.length;
   document.getElementById('kpiOrdersSub').textContent=currentPeriod==='last50'?'last 50':currentPeriod;
   document.getElementById('kpiAvg').textContent='$'+avg.toFixed(2);
@@ -1223,14 +1397,16 @@ function renderStats() {
   document.getElementById('kpiTipsSub').textContent=pending+' pending';
   document.getElementById('kpiTipRate').textContent=(tipRate*100).toFixed(0)+'%';
   document.getElementById('kpiMiles').textContent=totalMiles.toFixed(1);
-  document.getElementById('kpiDeduct').textContent='$'+(totalMiles*0.70).toFixed(2);
+  document.getElementById('kpiDeduct').textContent='$'+deduction.toFixed(2);
   var rMap={};
-  pendingTipOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);var region=o.region||extractRegion(o.address||'');if(region==='Unknown'||region==='Other')return;if(!rMap[region])rMap[region]={tips:[],count:0};rMap[region].tips.push(tip);rMap[region].count++;});
+  // Tip averages use confirmed tips only — an unconfirmed delivery carries no tip
+  // information, and counting it as $0 here would drag the region's average down.
+  pendingTipOrders.forEach(function(o){tipObservations(o).forEach(function(x){var region=x.region;if(region==='Unknown'||region==='Other')return;if(!rMap[region])rMap[region]={tips:[],count:0};rMap[region].tips.push(x.tip);rMap[region].count++;});});
   var rArr=Object.keys(rMap).map(function(r){var d=rMap[r];var avg=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length;return{region:r,avg:avg,count:d.count};}).sort(function(a,b){return b.avg-a.avg;});
   var maxR=rArr.length>0?Math.max.apply(null,rArr.map(function(r){return r.avg;})):1;
   document.getElementById('regionStats').innerHTML=rArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from different areas to compare regions.</div>':rArr.map(function(r){return '<div class="region-row"><div class="region-name">'+r.region+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(r.avg/Math.max(maxR,0.01)*100)+'%'+';"></div></div><div class="region-stats"><div class="region-avg">$'+r.avg.toFixed(2)+'</div><div class="region-count">'+r.count+' orders</div></div></div>';}).join('');
   var sMap={};
-  pendingTipOrders.forEach(function(o){var tip=o.confirmedTip!=null?o.confirmedTip:(o.tip||0);if(!sMap[o.store])sMap[o.store]={tips:[],count:0};sMap[o.store].tips.push(tip);sMap[o.store].count++;});
+  pendingTipOrders.forEach(function(o){tipObservations(o).forEach(function(x){if(!sMap[x.store])sMap[x.store]={tips:[],count:0};sMap[x.store].tips.push(x.tip);sMap[x.store].count++;});});
   var sArr=Object.keys(sMap).map(function(s){var d=sMap[s];var avg=d.tips.reduce(function(a,b){return a+b;},0)/d.tips.length;return{store:s,avg:avg,count:d.count};}).sort(function(a,b){return b.avg-a.avg;});
   var maxS=sArr.length>0?Math.max.apply(null,sArr.map(function(s){return s.avg;})):1;
   document.getElementById('storeStats').innerHTML=sArr.length<2?'<div style="font-size:12px;color:var(--muted);">Claim orders from multiple stores to compare.</div>':sArr.map(function(s){return '<div class="region-row"><div class="region-name">'+s.store+'</div><div class="region-bar-wrap"><div class="region-bar" style="width:'+Math.round(s.avg/Math.max(maxS,0.01)*100)+'%'+';"></div></div><div class="region-stats"><div class="region-avg">$'+s.avg.toFixed(2)+' avg</div><div class="region-count">'+s.count+' orders</div></div></div>';}).join('');
@@ -1254,8 +1430,10 @@ function buildOrderCard(o, num, isPending) {
   const detailsPanel = `
     <div class="pt-details" id="ptd-${o.id}">
       <div class="pt-details-row"><span class="pt-details-key">Store</span><span class="pt-details-val">${o.store}</span></div>
-      <div class="pt-details-row"><span class="pt-details-key">Address</span><span class="pt-details-val">${(o.address||'Not recorded')}</span></div>
-      <div class="pt-details-row"><span class="pt-details-key">Region</span><span class="pt-details-val">${(o.region||extractRegion(o.address||''))}</span></div>
+      ${(o.stops && o.stops.length)
+        ? o.stops.map((s,i)=>`<div class="pt-details-row"><span class="pt-details-key">Stop ${i+1}</span><span class="pt-details-val">${escapeHtml(s.address||'Not recorded')}${s.tip!=null?` · $${s.tip.toFixed(2)} tip`:''}</span></div>`).join('')
+        : `<div class="pt-details-row"><span class="pt-details-key">Address</span><span class="pt-details-val">${(o.address||'Not recorded')}</span></div>
+      <div class="pt-details-row"><span class="pt-details-key">Region</span><span class="pt-details-val">${(o.region||extractRegion(o.address||''))}</span></div>`}
       <div class="pt-details-row"><span class="pt-details-key">Claimed at</span><span class="pt-details-val">${timeStr}</span></div>
       <div class="pt-details-row"><span class="pt-details-key">Base pay</span><span class="pt-details-val">$${(o.basePay||0).toFixed(2)}</span></div>
       ${o.bonus ? `<div class="pt-details-row"><span class="pt-details-key">Bonus</span><span class="pt-details-val">$${o.bonus.toFixed(2)}</span></div>` : ''}
@@ -1299,7 +1477,15 @@ function buildOrderCard(o, num, isPending) {
   `;
 
   let actionBtns = '';
-  if (isPending) {
+  if (isPending && o.stops && o.stops.length) {
+    actionBtns = `
+      <div style="font-size:11px;color:var(--muted);margin:8px 0 6px;">Each stop tips separately. Enter what has arrived — the order counts as confirmed once every stop is in.</div>
+      ${o.stops.map((s,i)=>`
+      <div class="pt-input-row"><input class="pt-input" type="number" id="ptip-${o.id}-${i}" placeholder="Stop ${i+1} — ${escapeHtml(s.nickname||orderNickname(s.address||'')||('stop '+(i+1)))}" step="0.01" min="0" inputmode="decimal" value="${s.tip!=null?s.tip:''}"></div>`).join('')}
+      <button class="pt-save-btn" onclick="confirmBatchTips('${o.id}')" style="width:100%;margin-top:6px;padding:10px;">Save tips</button>
+      <button class="btn-sm r" onclick="unclaimFromTips('${o.id}')" style="width:100%;text-align:center;margin-top:6px;">Remove this order entirely</button>
+    `;
+  } else if (isPending) {
     actionBtns = `
       <div class="pt-input-row"><input class="pt-input" type="number" id="ptip-${o.id}" placeholder="Tip amount..." step="0.01" min="0" inputmode="decimal"><button class="pt-save-btn" onclick="confirmTip('${o.id}')">Save tip</button></div>
       <button class="btn-sm r" onclick="unclaimFromTips('${o.id}')" style="width:100%;text-align:center;margin-top:6px;">Remove this order entirely</button>
@@ -1348,10 +1534,78 @@ function saveOrderEdits(id) {
   notify('Order updated!');
 }
 
+function tipsPending(o) {
+  // A batch is only settled when every stop has reported, even though the tips
+  // that have already arrived are counted toward earnings.
+  if (o.stops && o.stops.length) return o.stops.some(function(s){ return s.tip == null; });
+  return o.confirmedTip == null;
+}
+
+// Flattens an order into one tip observation per delivery, so a batch teaches both
+// of its regions instead of crediting the combined tip to whichever stop was first.
+function tipObservations(o) {
+  if (o.stops && o.stops.length) {
+    return o.stops.filter(function(s){ return s.tip != null; })
+                  .map(function(s){ return { tip: s.tip, store: o.store, region: s.region || extractRegion(s.address||'') }; });
+  }
+  if (o.confirmedTip == null) return [];
+  return [{ tip: o.confirmedTip, store: o.store, region: o.region || extractRegion(o.address||'') }];
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function addDayBonus() {
+  var dEl=document.getElementById('bonusDate'), aEl=document.getElementById('bonusAmount'), nEl=document.getElementById('bonusNote');
+  var amt=parseFloat(aEl.value);
+  if (!amt || amt<=0) { notify('Enter a bonus amount first', true); return; }
+  // Build the date at local noon. new Date('2026-08-25') parses as UTC midnight, which
+  // is the previous evening in US timezones and would file the bonus under the wrong day.
+  var parts=(dEl.value||'').split('-');
+  var when=parts.length===3 ? new Date(+parts[0], +parts[1]-1, +parts[2], 12, 0, 0) : new Date();
+  dailyBonuses.push({
+    id:'b'+Date.now()+'-'+Math.random().toString(36).slice(2,5),
+    ts:when.getTime(),
+    amount:Math.round(amt*100)/100,
+    note:(nEl.value||'').trim()
+  });
+  aEl.value=''; nEl.value='';
+  saveAll(); scheduleBonusSync(false); renderDayBonuses(); renderStats();
+  notify('Bonus of $'+amt.toFixed(2)+' added.');
+}
+
+function deleteDayBonus(id) {
+  if (!confirm('Remove this bonus?')) return;
+  dailyBonuses = dailyBonuses.filter(function(b){ return b.id !== id; });
+  // allowEmpty: deleting the last bonus must still clear the sheet and Supabase.
+  saveAll(); scheduleBonusSync(true); renderDayBonuses(); renderStats();
+  notify('Bonus removed.');
+}
+
+function renderDayBonuses() {
+  var dEl=document.getElementById('bonusDate');
+  if (dEl && !dEl.value) {
+    var n=new Date();
+    dEl.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  }
+  var el=document.getElementById('dayBonusList'); if(!el) return;
+  var recent=dailyBonuses.slice().sort(function(a,b){return b.ts-a.ts;}).slice(0,10);
+  if(!recent.length){ el.innerHTML='<div style="font-size:12px;color:var(--muted);">No bonuses logged yet.</div>'; return; }
+  el.innerHTML=recent.map(function(b){
+    return '<div class="cl-item"><div><div style="font-size:13px;font-weight:500;">$'+b.amount.toFixed(2)+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);">'+new Date(b.ts).toLocaleDateString()+(b.note?' · '+escapeHtml(b.note):'')+'</div></div>'+
+      '<button class="btn-sm r" onclick="deleteDayBonus(\''+b.id+'\')">Remove</button></div>';
+  }).join('');
+}
+
 function renderPendingTips() {
+  renderDayBonuses();
   var byNewest = function(a,b){ return (b.claimedTime||b.ts||0) - (a.claimedTime||a.ts||0); };
-  var pending   = pendingTipOrders.filter(function(o){ return o.confirmedTip==null; }).sort(byNewest);
-  var confirmed = pendingTipOrders.filter(function(o){ return o.confirmedTip!=null; }).sort(byNewest);
+  var pending   = pendingTipOrders.filter(tipsPending).sort(byNewest);
+  var confirmed = pendingTipOrders.filter(function(o){ return !tipsPending(o); }).sort(byNewest);
 
   var pl = document.getElementById('pendingTipsList');
   if (!pending.length) {
@@ -1392,24 +1646,71 @@ function confirmTip(id){
   notify('$'+tipVal.toFixed(2)+' tip saved - KPIs updated!');
 }
 
+function confirmBatchTips(id){
+  var order=pendingTipOrders.find(function(o){return o.id===id;});
+  if (!order||!order.stops) return;
+  var vals=order.stops.map(function(s,i){
+    var el=document.getElementById('ptip-'+id+'-'+i);
+    var v=el?parseFloat(el.value):NaN;
+    return (isNaN(v)||v<0)?null:v;
+  });
+  if (vals.every(function(v){return v===null;})) { notify('Enter at least one stop tip (0 if no tip)',true); return; }
+  order.stops.forEach(function(s,i){ s.tip=vals[i]; });
+  // Known stop tips count immediately — money you've actually been paid shouldn't wait
+  // on the other stop. The order still reads as pending until every stop reports.
+  var allIn=vals.every(function(v){return v!==null;});
+  order.confirmedTip = vals.reduce(function(a,b){return a+(b||0);},0);
+  saveAllAndSync(); renderPendingTips(); renderStats();
+  notify(allIn ? 'Batch tips saved — $'+order.confirmedTip.toFixed(2)+' total.' : 'Saved. Still waiting on the other stop before this counts as confirmed.');
+}
+
 function unconfirmTip(id){
-  var order=pendingTipOrders.find(function(o){return o.id===id;}); 
+  var order=pendingTipOrders.find(function(o){return o.id===id;});
   if (!order)return;
   if (!confirm('Move "$'+order.confirmedTip.toFixed(2)+' tip" back to pending so you can re-enter it?')) return;
-  order.confirmedTip=null; saveAllAndSync(); renderPendingTips(); renderStats();
+  order.confirmedTip=null;
+  if (order.stops) order.stops.forEach(function(s){ s.tip=null; });
+  saveAllAndSync(); renderPendingTips(); renderStats();
   notify('Tip moved back to pending — enter the correct amount.');
 }
-function unclaimFromTips(id){
-  if (!confirm('Remove this order from your claimed list entirely?')) return;
-  pendingTipOrders = pendingTipOrders.filter(function(o){ return o.id !== id; }); 
-  saveAllAndSync(); renderBadge(); renderPendingTips(); renderStats();
-  notify('Order removed from claimed.');
+async function deleteOrderEverywhere(id) {
+  if (!sheetsUrl || !id) return;
+  // Targeted delete rather than mirroring the whole list the way bonuses do: saveAll()
+  // trims old orders out of localStorage when storage fills, so rebuilding the sheet
+  // from what the browser currently holds would wipe real history.
+  try {
+    var payload = JSON.stringify({ action:'deleteOrder', orderId:id });
+    var encoded = btoa(unescape(encodeURIComponent(payload)));
+    await fetch(sheetsUrl + '?d=' + encoded, { method:'GET', mode:'no-cors' });
+  } catch(e) {
+    notify('Could not reach the sheet — delete this order there manually.', true);
+  }
+}
+
+async function unclaimFromTips(id){
+  var order = pendingTipOrders.find(function(o){ return o.id === id; });
+  if (!order) return;
+  var alsoRemote = sheetsUrl ? '\n\nIt will also be deleted from your Google Sheet and Supabase.' : '';
+  if (!confirm('Remove this order from your claimed list entirely?' + alsoRemote + '\n\nThis cannot be undone.')) return;
+
+  // Stop the run timer first — otherwise its interval keeps firing against an order
+  // that no longer exists.
+  if (orderIntervals[id]) { clearInterval(orderIntervals[id]); delete orderIntervals[id]; }
+
+  pendingTipOrders = pendingTipOrders.filter(function(o){ return o.id !== id; });
+  saveAll();
+  // Delete before re-syncing so the two requests can't race at the Apps Script end.
+  await deleteOrderEverywhere(id);
+  if (sheetsUrl) syncToSheets(true);
+
+  renderBadge(); renderPendingTips(); renderStats(); renderActiveOrders();
+  notify('Order removed from claimed, sheet, and Supabase.');
 }
 
 function claimOrderResult(idx) { 
   var o=currentResults[idx]; if (!o||o.claimed) return;
-  o.claimed=true; 
-  var c={id:'c'+Date.now()+'-'+Math.random().toString(36).slice(2,5),store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now(),claimedTime:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg', status: 'queued', runStartTime: null, runEndTime: null, runDurationMinutes: null, timerIntervalId: null};
+  o.claimed=true;
+  var c={id:'c'+Date.now()+'-'+Math.random().toString(36).slice(2,5),store:o.store,address:o.address||'',nickname:orderNickname(o.address||''),region:o.region||extractRegion(o.address||''),isBatchOffer:!!o.isBatchOffer,stops:o.stops?JSON.parse(JSON.stringify(o.stops)):null,basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now(),claimedTime:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg', status: 'queued', runStartTime: null, runEndTime: null, runDurationMinutes: null, timerIntervalId: null};
   pendingTipOrders.unshift(c); 
   saveAllAndSync(); 
   renderBadge(); 
@@ -1424,7 +1725,7 @@ function claimBatch(idxArr) {
   idxArr.forEach(function(idx){
     var o=currentResults[idx]; if (!o||o.claimed) return;
     o.claimed=true;
-    var c={id:'c'+Date.now()+idx,store:o.store,address:o.address||'',region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now()+idx,claimedTime:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg',batchGroup:true, status: 'queued', runStartTime: null, runEndTime: null, runDurationMinutes: null, timerIntervalId: null};
+    var c={id:'c'+Date.now()+idx,store:o.store,address:o.address||'',nickname:orderNickname(o.address||''),region:o.region||extractRegion(o.address||''),basePay:o.basePay||o.pay,tip:o.tip||0,bonus:o.bonus||0,confirmedTip:null,items:o.items,estMinutes:o.estMinutes,distance:o.distance,score:o.score,ts:Date.now()+idx,claimedTime:Date.now(),imgB64:o.imgB64||null,imgMime:o.imgMime||'image/jpeg',batchGroup:true, status: 'queued', runStartTime: null, runEndTime: null, runDurationMinutes: null, timerIntervalId: null};
     pendingTipOrders.unshift(c); names.push(o.store); 
   });
   saveAllAndSync(); renderBadge(); renderResults(); renderActiveOrders();
@@ -1438,9 +1739,11 @@ try {
   pendingTipOrders = JSON.parse(localStorage.getItem('soa_pending_tips') || '[]');
 
   completedRuns = JSON.parse(localStorage.getItem('soa_completed_runs') || '[]');
+  dailyBonuses = JSON.parse(localStorage.getItem('soa_daily_bonuses') || '[]');
 } catch(e) {
   pendingTipOrders = [];
   completedRuns = [];
+  dailyBonuses = [];
 }
 
 applySettings(); 

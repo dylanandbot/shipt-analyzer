@@ -32,8 +32,10 @@ Deno.serve(async (req) => {
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabaseClient
         .from('orders')
-        .select('store_name, region, confirmed_tip, base_pay, bonus_pay')
-        .not('confirmed_tip', 'is', null)
+        .select('store_name, region, confirmed_tip, base_pay, bonus_pay, stop2_address, stop2_region, stop2_tip')
+        // Either stop having reported is enough. Filtering on confirmed_tip alone
+        // would drop a batch whose second customer tipped before the first did.
+        .or('confirmed_tip.not.is.null,stop2_tip.not.is.null')
         .range(from, from + PAGE - 1)
 
       if (error) throw error
@@ -46,17 +48,38 @@ Deno.serve(async (req) => {
     const regionAgg: Record<string, { tips: number[]; totals: number[] }> = {}
 
     for (const r of rows) {
-      const tip = Number(r.confirmed_tip) || 0
-      const total = (Number(r.base_pay) || 0) + tip + (Number(r.bonus_pay) || 0)
-
-      if (r.store_name) {
-        if (!storeAgg[r.store_name]) storeAgg[r.store_name] = { tips: [] }
-        storeAgg[r.store_name].tips.push(tip)
+      // A batch row carries two deliveries: the row's own region/confirmed_tip is
+      // stop 1, and stop 2 rides in its own columns. Expand it into one observation
+      // per delivery so stop 2's region learns from its tip instead of being ignored,
+      // and so stop 1 isn't credited with the combined amount.
+      // Only deliveries that have actually reported become observations. A stop
+      // still waiting on its tip contributes nothing rather than a $0 that would
+      // drag its region's average down.
+      const deliveries: Array<{ region: string; tip: number }> = []
+      if (r.confirmed_tip !== null && r.confirmed_tip !== undefined) {
+        deliveries.push({ region: r.region || 'Unknown', tip: Number(r.confirmed_tip) || 0 })
       }
-      const region = r.region || 'Unknown'
-      if (!regionAgg[region]) regionAgg[region] = { tips: [], totals: [] }
-      regionAgg[region].tips.push(tip)
-      regionAgg[region].totals.push(total)
+      if (r.stop2_tip !== null && r.stop2_tip !== undefined) {
+        deliveries.push({ region: r.stop2_region || 'Unknown', tip: Number(r.stop2_tip) || 0 })
+      }
+      if (deliveries.length === 0) continue
+
+      // Fixed pay is shared across the run, so split it per delivery to keep the
+      // tip-to-pay ratio comparable with a single order's. Divide by how many stops
+      // the order actually has, not how many have reported — otherwise a half-settled
+      // batch credits one stop with the entire run's pay.
+      const stopCount = r.stop2_address ? 2 : 1
+      const share = ((Number(r.base_pay) || 0) + (Number(r.bonus_pay) || 0)) / stopCount
+
+      for (const d of deliveries) {
+        if (r.store_name) {
+          if (!storeAgg[r.store_name]) storeAgg[r.store_name] = { tips: [] }
+          storeAgg[r.store_name].tips.push(d.tip)
+        }
+        if (!regionAgg[d.region]) regionAgg[d.region] = { tips: [], totals: [] }
+        regionAgg[d.region].tips.push(d.tip)
+        regionAgg[d.region].totals.push(share + d.tip)
+      }
     }
 
     const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length
